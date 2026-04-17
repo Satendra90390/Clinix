@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: medguides
+    name: clinixai
     env: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
@@ -10,7 +10,7 @@ services:
       - key: WORKERS
         value: 4
       - key: DB_PATH
-        value: /data/medguides.db
+        value: /data/clinixai.db
       - key: ALLOWED_ORIGINS
         value: "*"
     disk:
