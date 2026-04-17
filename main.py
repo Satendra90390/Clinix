@@ -76,13 +76,13 @@ def safe_data(val):
 async def root(request: Request):
     try:
         return templates.TemplateResponse(
-            name="index.html",
-            context={
-                "request": request,
+            request,
+            "index.html",
+            {
                 "guidelines": [],
                 "categories": [],
                 "disclaimer": "Debug mode",
-                "app_version": "1.0.4"
+                "app_version": "1.0.5"
             }
         )
     except Exception as e:
