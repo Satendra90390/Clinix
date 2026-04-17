@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: medguides
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: WORKERS
+        value: 4
+      - key: DB_PATH
+        value: /data/medguides.db
+      - key: ALLOWED_ORIGINS
+        value: "*"
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

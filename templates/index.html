@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="ClinixAI — AI-powered clinical medical information platform. Symptom checker, drug database, emergency protocols, and disease encyclopedia.">
+    <meta name="theme-color" content="#04080f">
+    <meta name="keywords"
+        content="medical platform, symptom checker, drug database, emergency protocols, first aid, clinical guidelines">
+    <title>ClinixAI | AI-Powered Medical Platform</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <!-- Background Effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+    <div class="bg-particles"></div>
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- HEADER -->
+    <header>
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <div class="logo-icon">✦</div>
+                <div>
+                    <h1>ClinixAI</h1>
+                    <span>AI-POWERED MEDICAL PLATFORM</span>
+                </div>
+            </a>
+            <div class="nav-tabs" id="navTabs">
+                <button class="nav-tab active" data-page="home" onclick="navigateTo('home')">
+                    <span class="tab-icon">&#127968;</span> Home
+                </button>
+                <button class="nav-tab" data-page="symptoms" onclick="navigateTo('symptoms')">
+                    <span class="tab-icon">&#129757;</span> Symptoms
+                </button>
+                <button class="nav-tab" data-page="drugs" onclick="navigateTo('drugs')">
+                    <span class="tab-icon">&#128138;</span> Drugs
+                </button>
+                <button class="nav-tab" data-page="emergency" onclick="navigateTo('emergency')">
+                    <span class="tab-icon">&#128682;</span> Emergency
+                </button>
+                <button class="nav-tab" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
+                    <span class="tab-icon">&#128218;</span> Encyclopedia
+                </button>
+                <button class="nav-tab" data-page="profile" onclick="navigateTo('profile')">
+                    <span class="tab-icon">&#128100;</span> Profile
+                </button>
+            </div>
+            <div class="header-actions">
+                <button class="btn-emergency" onclick="navigateTo('emergency')">
+                    <span>&#9888;</span> EMERGENCY
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="page-container">
+        <!-- ==================== HOME PAGE ==================== -->
+        <div id="homePage" class="page active">
+            <div class="hero-stats" id="heroStats">
+                <div class="stat-card">
+                    <div class="stat-num" id="totalCount">0</div>
+                    <div class="stat-label">Guidelines</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="categoryCount">0</div>
+                    <div class="stat-label">Categories</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="criticalCount">0</div>
+                    <div class="stat-label">Critical/Urgent</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-num" id="protocolCount">0</div>
+                    <div class="stat-label">Emergency Protocols</div>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-bar-full">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" id="searchInput" class="search-input"
+                        placeholder="Search conditions, medicines, symptoms...">
+                </div>
+                <div class="filters-row">
+                    <div class="filters-bar" id="filtersBar">
+                        <button class="filter-pill active" data-category="">All</button>
+                    </div>
+                    <div class="severity-filters" id="severityFilters">
+                        <button class="filter-pill sev-filter" data-severity="">All Severities</button>
+                        <button class="filter-pill sev-filter sev-mild" data-severity="mild">Mild</button>
+                        <button class="filter-pill sev-filter sev-moderate" data-severity="moderate">Moderate</button>
+                        <button class="filter-pill sev-filter sev-urgent" data-severity="urgent">Urgent</button>
+                        <button class="filter-pill sev-filter sev-critical" data-severity="critical">Critical</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <div class="results-count">Showing <strong id="showingCount">0</strong> guidelines</div>
+                <div class="view-toggle">
+                    <button class="view-btn active" onclick="setView('grid')">&#9638;</button>
+                    <button class="view-btn" onclick="setView('list')">&#9776;</button>
+                </div>
+            </div>
+
+            <div class="guidelines-grid" id="guidelinesGrid">
+                {% for g in guidelines %}
+                <article class="card" data-id="{{ g.id }}" data-category="{{ g.category }}" data-title="{{ g.title }}"
+                    data-summary="{{ g.summary }}" data-severity="{{ g.get('severity', 'mild') }}"
+                    data-medicines='{{ g.get("medicines", []) | tojson | e }}'
+                    data-steps='{{ g.get("steps", []) | tojson | e }}'>
+                    <div class="card-top">
+                        <div class="card-badges">
+                            <span class="badge-category">{{ g.category }}</span>
+                            <span class="badge-severity sev-{{ g.get('severity', 'mild') }}">{{ g.get('severity',
+                                'mild') | upper }}</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="icon-btn" onclick="event.stopPropagation(); bookmarkItem({{ g.id }})"
+                                title="Bookmark">&#9734;</button>
+                            <button class="icon-btn" onclick="event.stopPropagation(); openEditModal({{ g.id }})"
+                                title="Edit">&#9998;</button>
+                            <button class="icon-btn delete"
+                                onclick="event.stopPropagation(); deleteGuideline({{ g.id }})"
+                                title="Delete">&#10005;</button>
+                        </div>
+                    </div>
+                    <h2 class="card-title">{{ g.title }}</h2>
+                    <p class="card-summary">{{ g.summary }}</p>
+                    {% if g.get('steps') %}
+                    <div class="steps-preview">
+                        {% for step in g.get('steps', [])[:2] %}
+                        <div class="step-chip"><span>{{ loop.index }}</span> {{ step[:50] }}{% if step|length > 50
+                            %}...{% endif %}</div>
+                        {% endfor %}
+                        {% if g.get('steps') | length > 2 %}
+                        <div class="step-chip">+{{ g.get('steps') | length - 2 }} more steps</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <div class="card-footer">
+                        <div class="medicines-preview">
+                            {% for med in g.get('medicines', [])[:3] %}
+                            <span class="med-chip">{{ med }}</span>
+                            {% endfor %}
+                            {% if g.get('medicines', []) | length > 3 %}
+                            <span class="med-chip">+{{ g.get('medicines', []) | length - 3 }} more</span>
+                            {% endif %}
+                        </div>
+                        <span class="view-details-btn">View &#8594;</span>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon">&#128230;</div>
+                <h3>No guidelines found</h3>
+                <p>Try adjusting your search or filters</p>
+            </div>
+
+            <button class="fab" onclick="openAddModal()" title="Add Guideline">+</button>
+        </div>
+
+        <!-- ==================== SYMPTOM CHECKER PAGE ==================== -->
+        <div id="symptomsPage" class="page">
+            <div class="page-header">
+                <h2>&#129757; Symptom Checker & Triage</h2>
+                <p>Select your symptoms to get possible conditions and recommended actions</p>
+            </div>
+
+            <div class="symptom-checker-layout">
+                <div class="symptom-panel">
+                    <h3>Select Symptoms</h3>
+                    <div class="symptom-tags" id="selectedSymptomTags"></div>
+                    <div class="symptom-grid">
+                        <button class="symptom-btn" onclick="toggleSymptom('fever')">Fever</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('headache')">Headache</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('chest pain')">Chest Pain</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('difficulty breathing')">Breathing
+                            Difficulty</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('bleeding')">Bleeding</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('confusion')">Confusion</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('cough')">Cough</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('rash')">Rash</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('vomiting')">Vomiting</button>
+                        <button class="symptom-btn" onclick="toggleSymptom('dizziness')">Dizziness</button>
+                    </div>
+                    <button class="btn-primary" onclick="checkSymptoms()">Check Symptoms</button>
+                </div>
+
+                <div class="triage-panel" id="triagePanel" style="display: none;">
+                    <h3>Results & Recommended Action</h3>
+                    <div class="triage-alert" id="triageAlert"></div>
+                    <div class="condition-results" id="conditionResults"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== DRUG DATABASE PAGE ==================== -->
+        <div id="drugsPage" class="page">
+            <div class="page-header">
+                <h2>&#128138; Drug Database (FDA Data)</h2>
+                <p>Search medicines for dosage, side effects, and interactions</p>
+            </div>
+
+            <div class="drug-search">
+                <div class="search-bar-full">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" id="drugSearchInput" class="search-input"
+                        placeholder="Search drug name (e.g., Tylenol, Ibuprofen)...">
+                    <button class="btn-primary" onclick="searchDrug()"
+                        style="width: auto; padding: 0 1.5rem;">Search</button>
+                </div>
+            </div>
+
+            <div class="drug-results" id="drugResults" style="display: none;"></div>
+
+            <div class="drug-interaction-checker" style="margin-top: 2rem;">
+                <h3>&#9888; Drug Interaction Checker</h3>
+                <div class="interaction-inputs" id="interactionInputs">
+                    <input type="text" class="form-control drug-input" placeholder="Drug 1 (e.g., Aspirin)">
+                    <input type="text" class="form-control drug-input" placeholder="Drug 2 (e.g., Warfarin)">
+                </div>
+                <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
+                    <button class="btn-primary" onclick="checkInteractions()" style="flex: 1;">Check
+                        Interactions</button>
+                    <button class="btn-secondary" onclick="addDrugInput()">+ Add Drug</button>
+                </div>
+                <div class="interaction-results" id="interactionResults" style="display: none; margin-top: 1rem;"></div>
+            </div>
+        </div>
+
+        <!-- ==================== EMERGENCY PAGE ==================== -->
+        <div id="emergencyPage" class="page">
+            <div class="emergency-header">
+                <h2>&#128682; Emergency Protocols</h2>
+                <button class="btn-emergency-large" onclick="callEmergency()">
+                    <span>&#128222;</span> CALL EMERGENCY SERVICES
+                </button>
+            </div>
+
+            <div class="emergency-protocols" id="emergencyProtocols">
+                <!-- Populated dynamically -->
+            </div>
+
+            <div class="nearby-hospitals" style="margin-top: 2rem;">
+                <h3>&#127973; Find Nearby Medical Facilities</h3>
+                <div class="location-banner">
+                    <span class="loc-icon">&#128205;</span>
+                    <span id="locationText">Detecting location...</span>
+                </div>
+                <div class="facility-buttons">
+                    <a id="hospitalLink" class="facility-btn hospital" href="#" target="_blank">
+                        <span>&#127973;</span> Hospitals
+                    </a>
+                    <a id="pharmacyLink" class="facility-btn pharmacy" href="#" target="_blank">
+                        <span>&#128138;</span> Pharmacies
+                    </a>
+                    <a id="clinicLink" class="facility-btn clinic" href="#" target="_blank">
+                        <span>&#128137;</span> Clinics
+                    </a>
+                </div>
+                <iframe id="mapFrame"
+                    style="width: 100%; height: 300px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); margin-top: 1rem; display: none;"></iframe>
+            </div>
+        </div>
+
+        <!-- ==================== ENCYCLOPEDIA PAGE ==================== -->
+        <div id="encyclopediaPage" class="page">
+            <div class="page-header">
+                <h2>&#128218; Disease Encyclopedia</h2>
+                <p>Browse medical conditions A-Z</p>
+            </div>
+
+            <div class="encyclopedia-controls">
+                <div class="letter-bar" id="letterBar">
+                    <button class="letter-btn active" onclick="filterByLetter('')">All</button>
+                </div>
+                <div class="search-bar-full">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" id="encyclopediaSearch" class="search-input" placeholder="Search conditions...">
+                </div>
+            </div>
+
+            <div class="encyclopedia-list" id="encyclopediaList"></div>
+        </div>
+
+        <!-- ==================== PROFILE PAGE ==================== -->
+        <div id="profilePage" class="page">
+            <div class="page-header">
+                <h2>&#128100; User Profile</h2>
+                <p>Manage your medical profile and preferences</p>
+            </div>
+
+            <div class="profile-layout">
+                <div class="profile-form">
+                    <h3>Create / Update Profile</h3>
+                    <form id="profileForm" onsubmit="saveProfile(event)">
+                        <div class="form-group">
+                            <label>Username *</label>
+                            <input type="text" id="profileUsername" class="form-control" placeholder="Your username"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profileEmail" class="form-control" placeholder="your@email.com">
+                        </div>
+                        <div class="form-group">
+                            <label>User Type *</label>
+                            <select id="profileType" class="form-control" required>
+                                <option value="patient">Patient</option>
+                                <option value="medic">Medical Professional</option>
+                                <option value="student">Student</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Blood Type</label>
+                            <select id="bloodType" class="form-control">
+                                <option value="">Select...</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Allergies / Medical Notes</label>
+                            <textarea id="medicalNotes" class="form-control"
+                                placeholder="List any allergies or important medical information..."
+                                rows="3"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary">Save Profile</button>
+                    </form>
+                </div>
+
+                <div class="bookmarks-panel">
+                    <h3>Bookmarked Guidelines</h3>
+                    <div id="bookmarksList" class="bookmarks-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+    <!-- Detail Modal -->
+    <div class="overlay" id="detailOverlay" onclick="if(event.target === this) closeDetailModal()">
+        <div class="detail-modal">
+            <div class="modal-hero" id="modalHero">
+                <button class="modal-close" onclick="closeDetailModal()">&#10005;</button>
+                <div class="modal-hero-badges">
+                    <span class="modal-hero-badge" id="modalCategory"></span>
+                    <span class="modal-hero-badge" id="modalSeverity"></span>
+                </div>
+                <h2 id="modalTitle"></h2>
+            </div>
+            <div class="modal-body">
+                <div class="modal-section">
+                    <div class="modal-section-title"><span>&#128221;</span> First Aid Steps</div>
+                    <div class="steps-list" id="modalSteps"></div>
+                </div>
+                <div class="modal-section">
+                    <div class="modal-section-title"><span>&#128196;</span> Summary</div>
+                    <p class="modal-summary-text" id="modalSummary"></p>
+                </div>
+                <div class="modal-section" id="medicinesSection">
+                    <div class="modal-section-title"><span>&#128138;</span> Recommended Medicines</div>
+                    <div class="medicines-grid" id="modalMedicines"></div>
+                </div>
+                <div class="modal-section" id="emergencySection" style="display: none;">
+                    <div class="emergency-alert">
+                        <span style="font-size: 1.5rem;">&#9888;</span>
+                        <div><strong>Emergency Condition:</strong> Seek immediate medical attention. Call emergency
+                            services or visit the nearest hospital.</div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <p class="disclaimer-text">For educational purposes only. Not medical advice. Consult a licensed
+                        healthcare provider.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="overlay" id="addOverlay" onclick="if(event.target === this) closeAddModal()">
+        <div class="add-modal">
+            <div class="add-header">
+                <h2>&#43; Add New Guideline</h2>
+                <button class="modal-close" onclick="closeAddModal()">&#10005;</button>
+            </div>
+            <div class="add-body">
+                <form id="addForm" onsubmit="submitNewGuideline(event)">
+                    <div class="form-group">
+                        <label>Condition Title *</label>
+                        <input type="text" id="addTitle" class="form-control" placeholder="e.g., Fever, Burns..."
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>First Aid Steps *</label>
+                        <textarea id="addSummary" class="form-control"
+                            placeholder="1) Wash area... 2) Apply pressure... 3) Cover..." required></textarea>
+                        <div class="form-hint">Number your steps for best results (1, 2, 3...)</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Category *</label>
+                        <select id="addCategory" class="form-control" required>
+                            <option value="">Select...</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="auto-enrich-info"><span>&#10024;</span> Medicines and severity assigned automatically
+                    </div>
+                    <button type="submit" class="btn-primary" id="submitBtn">Add Guideline</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="overlay" id="editOverlay" onclick="if(event.target === this) closeEditModal()">
+        <div class="add-modal">
+            <div class="add-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                <h2>&#9998; Edit Guideline</h2>
+                <button class="modal-close" onclick="closeEditModal()">&#10005;</button>
+            </div>
+            <div class="add-body">
+                <form id="editForm" onsubmit="submitEditGuideline(event)">
+                    <input type="hidden" id="editId">
+                    <div class="form-group">
+                        <label>Condition Title *</label>
+                        <input type="text" id="editTitle" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>First Aid Steps *</label>
+                        <textarea id="editSummary" class="form-control" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Category *</label>
+                        <select id="editCategory" class="form-control" required>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Severity</label>
+                        <select id="editSeverity" class="form-control">
+                            <option value="mild">Mild</option>
+                            <option value="moderate">Moderate</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    <div class="btn-group">
+                        <button type="submit" class="btn-primary" id="editSubmitBtn">Save Changes</button>
+                        <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Protocol Timer Modal -->
+    <div class="overlay" id="protocolTimerOverlay" onclick="if(event.target === this) closeProtocolTimer()">
+        <div class="protocol-timer-modal">
+            <div class="timer-header">
+                <h2 id="protocolTimerTitle">CPR Protocol</h2>
+                <button class="modal-close" onclick="closeProtocolTimer()">&#10005;</button>
+            </div>
+            <div class="timer-body">
+                <div class="timer-display" id="timerDisplay">00:00</div>
+                <div class="timer-controls">
+                    <button class="btn-primary" onclick="startTimer()">Start</button>
+                    <button class="btn-secondary" onclick="pauseTimer()">Pause</button>
+                    <button class="btn-secondary" onclick="resetTimer()">Reset</button>
+                </div>
+                <div class="protocol-steps" id="protocolSteps"></div>
+                <button class="btn-audio" onclick="toggleAudio()">
+                    <span id="audioIcon">&#128264;</span> Audio Guide
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p><strong>Disclaimer:</strong> For educational purposes only. Not medical advice. Consult a licensed healthcare
+            provider.</p>
+        <p style="margin-top: 0.5rem;">ClinixAI v1.0 &copy; 2026 | Built for healthcare professionals &amp; patients |
+            <a href="/docs" target="_blank">API Docs</a>
+        </p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
