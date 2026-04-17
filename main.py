@@ -312,20 +312,33 @@ async def root(request: Request):
                 'title': g.title,
                 'summary': g.summary,
                 'category': g.category,
-                'severity': g.severity,
+                'severity': g.severity or 'mild',
                 'medicines': safe_json_loads(g.medicines),
                 'steps': safe_json_loads(g.steps),
                 'video_url': g.video_url,
             }
             guidelines_data.append(guideline_dict)
-        categories = [c[0] for c in db.query(Guideline.category).distinct().all()]
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "guidelines": guidelines_data,
-            "categories": categories,
-            "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
-            "app_version": "1.0.0"
-        })
+        
+        categories = []
+        try:
+            categories = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
+        except Exception:
+            pass
+            
+        try:
+            return templates.TemplateResponse("index.html", {
+                "request": request,
+                "guidelines": guidelines_data,
+                "categories": categories,
+                "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
+                "app_version": "1.0.0"
+            })
+        except Exception as e:
+            logger.error(f"Template rendering error: {e}")
+            return HTMLResponse(content=f"<h1>Template Error</h1><p>{str(e)}</p><p>Path: {TEMPLATES_DIR}</p>", status_code=500)
+    except Exception as e:
+        logger.error(f"Root route error: {e}")
+        return HTMLResponse(content=f"<h1>Backend Error</h1><p>{str(e)}</p>", status_code=500)
     finally:
         db.close()
 
