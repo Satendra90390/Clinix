@@ -319,28 +319,43 @@ async def root(request: Request):
             }
             guidelines_data.append(guideline_dict)
         
-        categories = []
-        try:
-            categories = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
-        except Exception:
-            pass
-            
         template_file = "index.html"
-        template_path = os.path.join(TEMPLATES_DIR, template_file)
+        # Try both relative and absolute paths for Vercel
+        possible_paths = [
+            TEMPLATES_DIR,
+            os.path.join(os.getcwd(), "templates"),
+            "templates"
+        ]
         
-        if not os.path.exists(template_path):
-            return HTMLResponse(content=f"<h1>Template Error</h1><p>File not found: {template_path}</p><p>Current Dir: {os.getcwd()}</p><p>Listing: {os.listdir()}</p>", status_code=500)
+        template_found = False
+        final_dir = str(TEMPLATES_DIR)
+        for p in possible_paths:
+            if os.path.exists(os.path.join(p, template_file)):
+                final_dir = str(p)
+                template_found = True
+                break
+        
+        if not template_found:
+            msg = f"Template Error: index.html not found. Searched: {possible_paths}. Cwd: {os.getcwd()}. Files: {os.listdir()}"
+            logger.error(msg)
+            return HTMLResponse(content=f"<h1>Setup Error</h1><p>{msg}</p>", status_code=200) # 200 to bypass proxy error masking
             
-        return templates.TemplateResponse(template_file, {
-            "request": request,
-            "guidelines": guidelines_data,
-            "categories": categories,
-            "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
-            "app_version": "1.0.0"
-        })
+        try:
+            # Re-init templates with the found directory
+            itemplates = Jinja2Templates(directory=final_dir)
+            return itemplates.TemplateResponse(template_file, {
+                "request": request,
+                "guidelines": guidelines_data,
+                "categories": categories,
+                "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
+                "app_version": "1.0.0"
+            })
+        except Exception as e:
+            logger.error(f"Template rendering error: {e}")
+            return HTMLResponse(content=f"<h1>Template Rendering Error</h1><p>{str(e)}</p>", status_code=200)
     except Exception as e:
         logger.error(f"Root error: {e}")
-        return HTMLResponse(content=f"<h1>System Error</h1><p>{str(e)}</p>", status_code=500)
+        return HTMLResponse(content=f"<h1>Data Error</h1><p>{str(e)}</p>", status_code=200)
     finally:
         db.close()
 
