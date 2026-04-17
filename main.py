@@ -352,6 +352,7 @@ async def health_check():
             "status": "healthy",
             "app": "ClinixAI",
             "version": "1.0.0",
+            "debug_time": datetime.utcnow().isoformat(),
             "database": "PostgreSQL" if DATABASE_URL.startswith("postgres") else "SQLite",
             "guidelines": db.query(Guideline).count(),
             "protocols": db.query(EmergencyProtocol).count()
