@@ -300,7 +300,7 @@ def enrich_guideline(title, summary=""):
     return medicines, severity, steps
 
 # Routes
-@app.get("/", response_class=JSONResponse)
+@app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     db = SessionLocal()
     try:
@@ -319,13 +319,28 @@ async def root(request: Request):
             }
             guidelines_data.append(guideline_dict)
         
-        return {
-            "message": "Data loaded, skipping template for debug",
-            "count": len(guidelines_data),
-            "data": guidelines_data[:3] # Show first 3 for brevity
-        }
+        categories = []
+        try:
+            categories = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
+        except Exception:
+            pass
+            
+        template_file = "index.html"
+        template_path = os.path.join(TEMPLATES_DIR, template_file)
+        
+        if not os.path.exists(template_path):
+            return HTMLResponse(content=f"<h1>Template Error</h1><p>File not found: {template_path}</p><p>Current Dir: {os.getcwd()}</p><p>Listing: {os.listdir()}</p>", status_code=500)
+            
+        return templates.TemplateResponse(template_file, {
+            "request": request,
+            "guidelines": guidelines_data,
+            "categories": categories,
+            "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
+            "app_version": "1.0.0"
+        })
     except Exception as e:
-        return {"error": str(e), "type": str(type(e))}
+        logger.error(f"Root error: {e}")
+        return HTMLResponse(content=f"<h1>System Error</h1><p>{str(e)}</p>", status_code=500)
     finally:
         db.close()
 
