@@ -26,21 +26,42 @@ from dotenv import load_dotenv
 # Load environment
 load_dotenv()
 
-# Logging
+# Logging configuration
+# Vercel has a read-only filesystem, so we avoid writing to a log file there.
+IS_VERCEL = os.getenv("VERCEL") or os.getenv("NOW_REGION")
+log_handlers = [logging.StreamHandler()]
+
+if not IS_VERCEL:
+    try:
+        log_handlers.append(logging.FileHandler("clinixai.log"))
+    except Exception:
+        pass # Fallback to stream only if file write fails
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.FileHandler("clinixai.log"), logging.StreamHandler()]
+    handlers=log_handlers
 )
 logger = logging.getLogger(__name__)
 
 # Database setup
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///medguide.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Use SQLite for development, PostgreSQL for production
-if DATABASE_URL.startswith("postgres"):
+# Production: Use PostgreSQL (Neon/Render/etc)
+# Development/Fallback: Use SQLite
+if DATABASE_URL:
+    # SQLAlchemy requires 'postgresql://' or 'postgresql+psycopg2://'
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    # Add sslmode if using Neon/managed DBs
+    if "neon.tech" in DATABASE_URL and "sslmode" not in DATABASE_URL:
+        separator = "&" if "?" in DATABASE_URL else "?"
+        DATABASE_URL += f"{separator}sslmode=require"
+        
     engine = create_engine(DATABASE_URL)
 else:
+    # Fallback to local SQLite
     engine = create_engine("sqlite:///medguide.db", connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -222,8 +243,9 @@ app = FastAPI(
 )
 
 # Static & templates
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+BASE_DIR = Path(__file__).resolve().parent
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 # CORS
 app.add_middleware(
