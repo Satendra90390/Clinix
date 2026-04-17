@@ -244,8 +244,25 @@ app = FastAPI(
 
 # Static & templates
 BASE_DIR = Path(__file__).resolve().parent
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+STATIC_DIR = BASE_DIR / "static"
+TEMPLATES_DIR = BASE_DIR / "templates"
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+# Helper functions for robust data handling
+def safe_json_loads(data):
+    if data is None:
+        return []
+    if isinstance(data, (list, dict)):
+        return data
+    try:
+        if isinstance(data, str) and data.strip():
+            return json.loads(data)
+    except Exception as e:
+        logger.error(f"JSON parse error: {e}")
+    return []
 
 # CORS
 app.add_middleware(
@@ -296,8 +313,8 @@ async def root(request: Request):
                 'summary': g.summary,
                 'category': g.category,
                 'severity': g.severity,
-                'medicines': json.loads(g.medicines) if isinstance(g.medicines, str) else (g.medicines or []),
-                'steps': json.loads(g.steps) if isinstance(g.steps, str) else (g.steps or []),
+                'medicines': safe_json_loads(g.medicines),
+                'steps': safe_json_loads(g.steps),
                 'video_url': g.video_url,
             }
             guidelines_data.append(guideline_dict)
@@ -335,8 +352,8 @@ async def get_guidelines(category: str = Query(None), db: Session = Depends(get_
         query = query.filter(Guideline.category == category)
     guidelines = query.order_by(Guideline.id).all()
     for g in guidelines:
-        g.medicines = json.loads(g.medicines) if isinstance(g.medicines, str) else (g.medicines or [])
-        g.steps = json.loads(g.steps) if isinstance(g.steps, str) else (g.steps or [])
+        g.medicines = safe_json_loads(g.medicines)
+        g.steps = safe_json_loads(g.steps)
     return {"count": len(guidelines), "data": guidelines}
 
 @app.get("/api/guidelines/{g_id}")
@@ -344,8 +361,8 @@ async def get_guideline(g_id: int, db: Session = Depends(get_db)):
     guideline = db.query(Guideline).filter(Guideline.id == g_id).first()
     if not guideline:
         raise HTTPException(status_code=404, detail="Guideline not found")
-    guideline.medicines = json.loads(guideline.medicines) if isinstance(guideline.medicines, str) else (guideline.medicines or [])
-    guideline.steps = json.loads(guideline.steps) if isinstance(guideline.steps, str) else (guideline.steps or [])
+    guideline.medicines = safe_json_loads(guideline.medicines)
+    guideline.steps = safe_json_loads(guideline.steps)
     return {"data": guideline}
 
 @app.post("/api/guidelines", status_code=201)
@@ -448,7 +465,7 @@ async def check_interactions(drugs: list[str]):
                             if result.get("drug_interactions"):
                                 interactions.append({
                                     "drug": drug,
-                                    "interactions": result["drug_interactions"][:5]
+                                    "interactions": safe_json_loads(result["drug_interactions"])[:5]
                                 })
             except:
                 pass
@@ -552,8 +569,8 @@ async def get_user(user_id: int, db: Session = Depends(get_db)):
 async def export_data(db: Session = Depends(get_db)):
     guidelines = db.query(Guideline).all()
     for g in guidelines:
-        g.medicines = json.loads(g.medicines) if isinstance(g.medicines, str) else (g.medicines or [])
-        g.steps = json.loads(g.steps) if isinstance(g.steps, str) else (g.steps or [])
+        g.medicines = safe_json_loads(g.medicines)
+        g.steps = safe_json_loads(g.steps)
     return {"guidelines": guidelines, "exported_at": datetime.utcnow().isoformat()}
 
 if __name__ == "__main__":
