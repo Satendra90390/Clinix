@@ -74,36 +74,16 @@ def safe_data(val):
 # 7. Routes
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    db = SessionLocal()
     try:
-        # Simple fetching
-        db_guidelines = db.query(Guideline).all()
-        processed = []
-        for g in db_guidelines:
-            # We use dict for template compatibility with g.get()
-            processed.append({
-                "id": g.id,
-                "title": str(g.title),
-                "summary": str(g.summary),
-                "category": str(g.category),
-                "severity": str(g.severity or "mild"),
-                "medicines": safe_data(g.medicines),
-                "steps": safe_data(g.steps),
-                "video_url": g.video_url
-            })
-        
         return templates.TemplateResponse("index.html", {
             "request": request,
-            "guidelines": processed,
-            "categories": ["First Aid", "Emergency", "Mental Health", "Nutrition", "Lifestyle"],
-            "disclaimer": "Educational use only.",
-            "app_version": "1.0.3"
+            "guidelines": [],
+            "categories": [],
+            "disclaimer": "Debug mode",
+            "app_version": "1.0.4"
         })
     except Exception as e:
-        logger.error(f"Root error: {e}")
-        return HTMLResponse(content=f"<h1>System Error</h1><p>{str(e)}</p>", status_code=500)
-    finally:
-        db.close()
+        return HTMLResponse(content=f"<h1>Setup Error</h1><p>{str(e)}</p>", status_code=200)
 
 @app.get("/health")
 async def health():
