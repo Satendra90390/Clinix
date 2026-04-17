@@ -114,8 +114,8 @@
                 {% for g in guidelines %}
                 <article class="card" data-id="{{ g.id }}" data-category="{{ g.category }}" data-title="{{ g.title }}"
                     data-summary="{{ g.summary }}" data-severity="{{ g.get('severity', 'mild') }}"
-                    data-medicines='{{ g.get("medicines", []) | tojson | e }}'
-                    data-steps='{{ g.get("steps", []) | tojson | e }}'>
+                    data-medicines='{{ g.get("medicines", []) | join(", ") }}'
+                    data-steps='{{ g.get("steps", []) | join("||") }}'>
                     <div class="card-top">
                         <div class="card-badges">
                             <span class="badge-category">{{ g.category }}</span>
