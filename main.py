@@ -300,28 +300,42 @@ def enrich_guideline(title, summary=""):
     return medicines, severity, steps
 
 # Routes
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     db = SessionLocal()
     try:
-        guidelines = db.query(Guideline).order_by(Guideline.id).limit(10).all()
-        data = []
+        # Fetch data
+        guidelines = db.query(Guideline).order_by(Guideline.id).all()
+        guidelines_data = []
         for g in guidelines:
-            data.append({
-                "id": g.id,
-                "title": g.title,
-                "category": g.category
+            guidelines_data.append({
+                'id': g.id,
+                'title': g.title,
+                'summary': g.summary,
+                'category': g.category,
+                'severity': g.severity or 'mild',
+                'medicines': safe_json_loads(g.medicines),
+                'steps': safe_json_loads(g.steps),
+                'video_url': g.video_url,
             })
-        return JSONResponse(content={
-            "status": "debug",
-            "count": len(guidelines),
-            "sample": data,
-            "cwd": os.getcwd(),
-            "files": os.listdir(),
-            "env_db": bool(os.getenv("DATABASE_URL"))
+        
+        categories = []
+        try:
+            categories = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
+        except Exception:
+            categories = ["First Aid", "Emergency", "Mental Health", "Nutrition", "Lifestyle", "Chronic Conditions"]
+
+        # Render template
+        return templates.TemplateResponse("index.html", {
+            "request": request,
+            "guidelines": guidelines_data,
+            "categories": categories,
+            "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
+            "app_version": "1.0.1" # Incremented version to verify update
         })
     except Exception as e:
-        return JSONResponse(content={"error": str(e), "trace": "Captured in root"})
+        logger.error(f"Root error: {e}")
+        return HTMLResponse(content=f"<h1>System Error</h1><p>{str(e)}</p>", status_code=500)
     finally:
         db.close()
 
