@@ -75,13 +75,16 @@ def safe_data(val):
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     try:
-        return templates.TemplateResponse("index.html", {
-            "request": request,
-            "guidelines": [],
-            "categories": [],
-            "disclaimer": "Debug mode",
-            "app_version": "1.0.4"
-        })
+        return templates.TemplateResponse(
+            name="index.html",
+            context={
+                "request": request,
+                "guidelines": [],
+                "categories": [],
+                "disclaimer": "Debug mode",
+                "app_version": "1.0.4"
+            }
+        )
     except Exception as e:
         return HTMLResponse(content=f"<h1>Setup Error</h1><p>{str(e)}</p>", status_code=200)
 
