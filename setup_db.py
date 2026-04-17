@@ -18,7 +18,7 @@ except ImportError:
 PG_HOST = os.getenv("PG_HOST", "localhost")
 PG_PORT = os.getenv("PG_PORT", "5432")
 PG_USER = os.getenv("PG_USER", "postgres")
-PG_PASSWORD = os.getenv("PG_PASSWORD", "sachin111@rathor")
+PG_PASSWORD = os.getenv("PG_PASSWORD")
 DB_NAME = os.getenv("DB_NAME", "medguide")
 
 def create_database():

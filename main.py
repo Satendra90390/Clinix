@@ -300,62 +300,28 @@ def enrich_guideline(title, summary=""):
     return medicines, severity, steps
 
 # Routes
-@app.get("/", response_class=HTMLResponse)
+@app.get("/")
 async def root(request: Request):
     db = SessionLocal()
     try:
-        guidelines = db.query(Guideline).order_by(Guideline.id).all()
-        guidelines_data = []
+        guidelines = db.query(Guideline).order_by(Guideline.id).limit(10).all()
+        data = []
         for g in guidelines:
-            guideline_dict = {
-                'id': g.id,
-                'title': g.title,
-                'summary': g.summary,
-                'category': g.category,
-                'severity': g.severity or 'mild',
-                'medicines': safe_json_loads(g.medicines),
-                'steps': safe_json_loads(g.steps),
-                'video_url': g.video_url,
-            }
-            guidelines_data.append(guideline_dict)
-        
-        template_file = "index.html"
-        # Try both relative and absolute paths for Vercel
-        possible_paths = [
-            TEMPLATES_DIR,
-            os.path.join(os.getcwd(), "templates"),
-            "templates"
-        ]
-        
-        template_found = False
-        final_dir = str(TEMPLATES_DIR)
-        for p in possible_paths:
-            if os.path.exists(os.path.join(p, template_file)):
-                final_dir = str(p)
-                template_found = True
-                break
-        
-        if not template_found:
-            msg = f"Template Error: index.html not found. Searched: {possible_paths}. Cwd: {os.getcwd()}. Files: {os.listdir()}"
-            logger.error(msg)
-            return HTMLResponse(content=f"<h1>Setup Error</h1><p>{msg}</p>", status_code=200) # 200 to bypass proxy error masking
-            
-        try:
-            # Re-init templates with the found directory
-            itemplates = Jinja2Templates(directory=final_dir)
-            return itemplates.TemplateResponse(template_file, {
-                "request": request,
-                "guidelines": guidelines_data,
-                "categories": categories,
-                "disclaimer": "For educational purposes only. Not medical advice. Consult a licensed healthcare provider.",
-                "app_version": "1.0.0"
+            data.append({
+                "id": g.id,
+                "title": g.title,
+                "category": g.category
             })
-        except Exception as e:
-            logger.error(f"Template rendering error: {e}")
-            return HTMLResponse(content=f"<h1>Template Rendering Error</h1><p>{str(e)}</p>", status_code=200)
+        return JSONResponse(content={
+            "status": "debug",
+            "count": len(guidelines),
+            "sample": data,
+            "cwd": os.getcwd(),
+            "files": os.listdir(),
+            "env_db": bool(os.getenv("DATABASE_URL"))
+        })
     except Exception as e:
-        logger.error(f"Root error: {e}")
-        return HTMLResponse(content=f"<h1>Data Error</h1><p>{str(e)}</p>", status_code=200)
+        return JSONResponse(content={"error": str(e), "trace": "Captured in root"})
     finally:
         db.close()
 
