@@ -23,45 +23,105 @@
     <div class="bg-glow bg-glow-2"></div>
     <div class="bg-glow bg-glow-3"></div>
 
-    <!-- HEADER -->
-    <header>
-        <div class="header-inner">
+    <!-- SIDEBAR (Desktop) -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
             <a href="/" class="logo">
-                <div class="logo-icon">âœ¦</div>
-                <div>
-                    <h1>ClinixAI</h1>
-                    <span>AI-POWERED MEDICAL PLATFORM</span>
-                </div>
+                <div class="logo-icon">✦</div>
+                <h1>ClinixAI</h1>
             </a>
-            <div class="nav-tabs" id="navTabs">
-                <button class="nav-tab active" data-page="home" onclick="navigateTo('home')">
-                    <span class="tab-icon">&#127968;</span> Home
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-group">
+                <span class="nav-label">Main Menu</span>
+                <button class="nav-link active" data-page="home" onclick="navigateTo('home')">
+                    <span class="nav-icon">🏠</span> Home
                 </button>
-                <button class="nav-tab" data-page="symptoms" onclick="navigateTo('symptoms')">
-                    <span class="tab-icon">&#129757;</span> Symptoms
+                <button class="nav-link" data-page="symptoms" onclick="navigateTo('symptoms')">
+                    <span class="nav-icon">🩺</span> Symptoms
                 </button>
-                <button class="nav-tab" data-page="drugs" onclick="navigateTo('drugs')">
-                    <span class="tab-icon">&#128138;</span> Drugs
-                </button>
-                <button class="nav-tab" data-page="emergency" onclick="navigateTo('emergency')">
-                    <span class="tab-icon">&#128682;</span> Emergency
-                </button>
-                <button class="nav-tab" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
-                    <span class="tab-icon">&#127760;</span> Wikipedia
-                </button>
-                <button class="nav-tab" data-page="profile" onclick="navigateTo('profile')">
-                    <span class="tab-icon">&#128100;</span> Profile
+                <button class="nav-link" data-page="drugs" onclick="navigateTo('drugs')">
+                    <span class="nav-icon">💊</span> Drug Database
                 </button>
             </div>
-            <div class="header-actions">
-                <button class="btn-emergency" onclick="navigateTo('emergency')">
-                    <span>&#9888;</span> EMERGENCY
+            <div class="nav-group">
+                <span class="nav-label">Tools & Resources</span>
+                <button class="nav-link" data-page="emergency" onclick="navigateTo('emergency')">
+                    <span class="nav-icon">🚨</span> Emergency
+                </button>
+                <button class="nav-link" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
+                    <span class="nav-icon">🌐</span> Wikipedia
+                </button>
+            </div>
+            <div class="nav-group">
+                <span class="nav-label">Account</span>
+                <button class="nav-link" data-page="profile" onclick="navigateTo('profile')">
+                    <span class="nav-icon">👤</span> Profile
+                </button>
+            </div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="user-pill" onclick="navigateTo('profile')">
+                <img id="sidebarUserImg" src="https://ui-avatars.com/api/?name=Guest&background=random" alt="User">
+                <div class="user-info">
+                    <span id="sidebarUserName">Guest User</span>
+                    <span class="user-status">Online</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- BOTTOM NAV (Mobile) -->
+    <nav class="bottom-nav">
+        <button class="b-nav-item active" data-page="home" onclick="navigateTo('home')">
+            <span class="b-nav-icon">🏠</span>
+            <span class="b-nav-label">Home</span>
+        </button>
+        <button class="b-nav-item" data-page="symptoms" onclick="navigateTo('symptoms')">
+            <span class="b-nav-icon">🩺</span>
+            <span class="b-nav-label">Symptoms</span>
+        </button>
+        <button class="b-nav-item" data-page="emergency" onclick="navigateTo('emergency')">
+            <div class="b-nav-fab">🚨</div>
+        </button>
+        <button class="b-nav-item" data-page="drugs" onclick="navigateTo('drugs')">
+            <span class="b-nav-icon">💊</span>
+            <span class="b-nav-label">Drugs</span>
+        </button>
+        <button class="b-nav-item" data-page="profile" onclick="navigateTo('profile')">
+            <span class="b-nav-icon">👤</span>
+            <span class="b-nav-label">Profile</span>
+        </button>
+    </nav>
+
+    <!-- HEADER (Top Bar) -->
+    <header class="top-header">
+        <div class="header-content">
+            <div class="mobile-logo-wrapper">
+                <a href="/" class="logo">
+                    <div class="logo-icon">✦</div>
+                    <h1>ClinixAI</h1>
+                </a>
+            </div>
+            <div class="header-search">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="globalSearch" placeholder="Search anything...">
+            </div>
+            <div class="header-right">
+                <select id="languageSelect" class="lang-selector-modern" onchange="changeLanguage(this.value)">
+                    <option value="en">🇺🇸 EN</option>
+                    <option value="hi">🇮🇳 HI</option>
+                    <option value="es">🇪🇸 ES</option>
+                    <option value="fr">🇫🇷 FR</option>
+                </select>
+                <button class="btn-emergency-pill" onclick="navigateTo('emergency')">
+                    <span>🚨</span> EMERGENCY
                 </button>
             </div>
         </div>
     </header>
 
-    <div class="page-container">
+    <main class="content-wrapper">
         <!-- ==================== HOME PAGE ==================== -->
         <div id="homePage" class="page active">
             <div class="hero-stats" id="heroStats">

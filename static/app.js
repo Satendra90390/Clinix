@@ -13,9 +13,38 @@ let timerInterval = null;
 let timerSeconds = 0;
 let timerRunning = false;
 let audioGuide = null;
+let currentLanguage = localStorage.getItem('medguide_lang') || 'en';
+
+const translations = {
+    en: {
+        home: "Home", symptoms: "Symptoms", drugs: "Drugs", emergency: "Emergency", wikipedia: "Wikipedia", profile: "Profile",
+        guidelines: "Guidelines", categories: "Categories", critical_urgent: "Critical/Urgent", protocols: "Emergency Protocols",
+        search_placeholder: "Search conditions, medicines, symptoms...", showing: "Showing", guidelines_count: "guidelines",
+        welcome: "Welcome to ClinixAI", guest_btn: "Continue as Guest", login_sub: "Your AI-Powered Medical Companion"
+    },
+    hi: {
+        home: "होम", symptoms: "लक्षण", drugs: "दवाएं", emergency: "आपातकालीन", wikipedia: "विकिपीडिया", profile: "प्रोफ़ाइल",
+        guidelines: "दिशानिर्देश", categories: "श्रेणियाँ", critical_urgent: "गंभीर/तत्काल", protocols: "आपातकालीन प्रोटोकॉल",
+        search_placeholder: "स्थितियों, दवाओं, लक्षणों की खोज करें...", showing: "दिखा रहा है", guidelines_count: "दिशानिर्देश",
+        welcome: "क्लिनिक्स एआई में आपका स्वागत है", guest_btn: "अतिथि के रूप में जारी रखें", login_sub: "आपका एआई-संचालित चिकित्सा साथी"
+    },
+    es: {
+        home: "Inicio", symptoms: "Síntomas", drugs: "Medicamentos", emergency: "Emergencia", wikipedia: "Wikipedia", profile: "Perfil",
+        guidelines: "Pautas", categories: "Categorías", critical_urgent: "Crítico/Urgente", protocols: "Protocolos de Emergencia",
+        search_placeholder: "Buscar condiciones, medicamentos, síntomas...", showing: "Mostrando", guidelines_count: "pautas",
+        welcome: "Bienvenido a ClinixAI", guest_btn: "Continuar como Invitado", login_sub: "Su compañero médico impulsado por IA"
+    },
+    fr: {
+        home: "Accueil", symptoms: "Symptômes", drugs: "Médicaments", emergency: "Urgence", wikipedia: "Wikipédia", profile: "Profil",
+        guidelines: "Directives", categories: "Catégories", critical_urgent: "Critique/Urgent", protocols: "Protocoles d'Urgence",
+        search_placeholder: "Rechercher des conditions, médicaments, symptômes...", showing: "Affichage de", guidelines_count: "directives",
+        welcome: "Bienvenue sur ClinixAI", guest_btn: "Continuer en tant qu'Invité", login_sub: "Votre compagnon médical propulsé par l'IA"
+    }
+};
 
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
+    applyLanguage();
     checkLoginStatus();
     loadGuidelinesFromPage();
     setupFilters();
@@ -26,6 +55,79 @@ document.addEventListener('DOMContentLoaded', () => {
     populateEmergencyProtocols();
     loadUserProfile();
 });
+
+function changeLanguage(lang) {
+    currentLanguage = lang;
+    localStorage.setItem('medguide_lang', lang);
+    applyLanguage();
+    // Re-render components that might have translated text
+    renderCards();
+    populateEmergencyProtocols();
+}
+
+function applyLanguage() {
+    const t = translations[currentLanguage] || translations.en;
+    
+    // Update Nav Tabs
+    const navMapping = {
+        home: t.home, symptoms: t.symptoms, drugs: t.drugs,
+        emergency: t.emergency, encyclopedia: t.wikipedia, profile: t.profile
+    };
+    
+    Object.entries(navMapping).forEach(([page, label]) => {
+        const tabs = document.querySelectorAll(`.nav-link[data-page="${page}"], .b-nav-item[data-page="${page}"]`);
+        tabs.forEach(tab => {
+            const iconEl = tab.querySelector('.nav-icon, .b-nav-icon, .b-nav-fab');
+            if (iconEl) {
+                const icon = iconEl.textContent;
+                const labelEl = tab.querySelector('.b-nav-label');
+                if (labelEl) {
+                    labelEl.textContent = label;
+                } else if (!tab.querySelector('.b-nav-fab')) {
+                    tab.innerHTML = `<span class="nav-icon">${icon}</span> ${label}`;
+                }
+            }
+        });
+    });
+
+    // Update Hero Stats labels
+    const statsMapping = {
+        'totalCount': t.guidelines,
+        'categoryCount': t.categories,
+        'criticalCount': t.critical_urgent,
+        'protocolCount': t.protocols
+    };
+    
+    Object.entries(statsMapping).forEach(([id, label]) => {
+        const el = document.getElementById(id);
+        if (el && el.nextElementSibling) el.nextElementSibling.textContent = label;
+    });
+
+    // Update Search Placeholder
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.placeholder = t.search_placeholder;
+
+    // Update Showing text
+    const showingText = document.querySelector('.results-count');
+    if (showingText) {
+        showingText.innerHTML = `${t.showing} <strong id="showingCount">${allGuidelines.length}</strong> ${t.guidelines_count}`;
+    }
+
+    // Update Login Modal
+    const loginHeader = document.querySelector('.login-header h2');
+    if (loginHeader) loginHeader.textContent = t.welcome;
+    const loginSub = document.querySelector('.login-header p');
+    if (loginSub) loginSub.textContent = t.login_sub;
+    const guestBtn = document.querySelector('.btn-guest');
+    if (guestBtn) {
+        const icon = guestBtn.querySelector('.btn-icon').outerHTML;
+        guestBtn.innerHTML = `${icon} ${t.guest_btn}`;
+    }
+
+    // Sync language selector
+    const langSelect = document.getElementById('languageSelect');
+    if (langSelect) langSelect.value = currentLanguage;
+}
 
 function loadGuidelinesFromPage() {
     const cards = document.querySelectorAll('#guidelinesGrid .card');
@@ -193,18 +295,26 @@ function setupSearch() {
             if (e.key === 'Enter') searchWikipedia();
         });
     }
+
+    const globalSearch = document.getElementById('globalSearch');
+    if (globalSearch && searchInput) {
+        globalSearch.addEventListener('input', (e) => {
+            searchInput.value = e.target.value;
+            searchInput.dispatchEvent(new Event('input'));
+        });
+    }
 }
 
 // NAVIGATION
 function navigateTo(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-link, .b-nav-item').forEach(t => t.classList.remove('active'));
     
     const targetPage = document.getElementById(page + 'Page');
     if (targetPage) targetPage.classList.add('active');
     
-    const targetTab = document.querySelector(`.nav-tab[data-page="${page}"]`);
-    if (targetTab) targetTab.classList.add('active');
+    const activeTabs = document.querySelectorAll(`.nav-link[data-page="${page}"], .b-nav-item[data-page="${page}"]`);
+    activeTabs.forEach(t => t.classList.add('active'));
 
     if (page === 'encyclopedia') {
         // Initial letter bar if needed
@@ -830,9 +940,17 @@ function initGoogleSignIn() {
         return;
     }
 
+    const clientId = "7843657345-placeholder.apps.googleusercontent.com";
+    
+    if (clientId.includes("placeholder")) {
+        console.warn("Google Client ID is a placeholder. Google Login will simulate success for demo purposes.");
+    }
+
     google.accounts.id.initialize({
-        client_id: "7843657345-placeholder.apps.googleusercontent.com",
-        callback: handleGoogleLogin
+        client_id: clientId,
+        callback: handleGoogleLogin,
+        auto_select: false,
+        cancel_on_tap_outside: true
     });
 
     const btnContainer = document.getElementById("googleBtn");
