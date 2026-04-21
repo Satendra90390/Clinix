@@ -11,6 +11,7 @@
         content="medical platform, symptom checker, drug database, emergency protocols, first aid, clinical guidelines">
     <title>ClinixAI | AI-Powered Medical Platform</title>
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -350,7 +351,10 @@
                                 placeholder="List any allergies or important medical information..."
                                 rows="3"></textarea>
                         </div>
-                        <button type="submit" class="btn-primary">Save Profile</button>
+                        <div style="display: flex; gap: 1rem;">
+                            <button type="submit" class="btn-primary">Save Profile</button>
+                            <button type="button" class="btn-secondary" onclick="logout()" style="margin-top: 1rem;">Log Out</button>
+                        </div>
                     </form>
                 </div>
 
@@ -501,6 +505,32 @@
                 <button class="btn-audio" onclick="toggleAudio()">
                     <span id="audioIcon">&#128264;</span> Audio Guide
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="overlay active" id="loginOverlay" style="display: flex; align-items: center; justify-content: center; z-index: 2000;">
+        <div class="login-modal">
+            <div class="login-header">
+                <div class="logo-icon" style="margin: 0 auto 1rem;">âœ¦</div>
+                <h2>Welcome to ClinixAI</h2>
+                <p>Your AI-Powered Medical Companion</p>
+            </div>
+            <div class="login-body">
+                <div id="googleBtn" class="login-option">
+                    <!-- Google Sign-In will be rendered here -->
+                </div>
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+                <button class="btn-guest" onclick="loginAsGuest()">
+                    <span class="btn-icon">&#128100;</span> Continue as Guest
+                </button>
+            </div>
+            <div class="login-footer">
+                <p>By continuing, you agree to our Terms of Service and Privacy Policy.</p>
+                <p style="margin-top: 0.5rem; font-size: 0.7rem; opacity: 0.6;">Medical Disclaimer: ClinixAI is for educational purposes only.</p>
             </div>
         </div>
     </div>

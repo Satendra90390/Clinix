@@ -16,6 +16,7 @@ let audioGuide = null;
 
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
+    checkLoginStatus();
     loadGuidelinesFromPage();
     setupFilters();
     setupSearch();
@@ -806,7 +807,98 @@ async function saveProfile(e) {
     }
 }
 
-// LOCATION
+// LOGIN SYSTEM
+function checkLoginStatus() {
+    const overlay = document.getElementById('loginOverlay');
+    if (!overlay) return;
+    
+    if (currentUser) {
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
+    } else {
+        overlay.classList.add('active');
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        initGoogleSignIn();
+    }
+}
+
+function initGoogleSignIn() {
+    if (typeof google === 'undefined') {
+        setTimeout(initGoogleSignIn, 500);
+        return;
+    }
+
+    google.accounts.id.initialize({
+        client_id: "7843657345-placeholder.apps.googleusercontent.com",
+        callback: handleGoogleLogin
+    });
+
+    const btnContainer = document.getElementById("googleBtn");
+    if (btnContainer) {
+        google.accounts.id.renderButton(
+            btnContainer,
+            { theme: "outline", size: "large", width: 300, shape: "pill", text: "continue_with" }
+        );
+    }
+}
+
+function handleGoogleLogin(response) {
+    const payload = parseJwt(response.credential);
+    currentUser = {
+        username: payload.name,
+        email: payload.email,
+        user_type: 'patient',
+        profile_data: {
+            picture: payload.picture,
+            google_id: payload.sub
+        }
+    };
+    saveUserAndContinue();
+}
+
+function loginAsGuest() {
+    currentUser = {
+        username: 'Guest_' + Math.floor(Math.random() * 1000),
+        email: '',
+        user_type: 'guest',
+        profile_data: {
+            guest_mode: true
+        }
+    };
+    saveUserAndContinue();
+}
+
+function saveUserAndContinue() {
+    localStorage.setItem('medguide_user', JSON.stringify(currentUser));
+    checkLoginStatus();
+    loadUserProfile();
+    fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentUser)
+    }).catch(err => console.log('Sync failed, using local storage'));
+}
+
+function logout() {
+    if (confirm('Are you sure you want to log out?')) {
+        localStorage.removeItem('medguide_user');
+        currentUser = null;
+        location.reload();
+    }
+}
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) { return {}; }
+}
 function detectLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
