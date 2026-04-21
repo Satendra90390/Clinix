@@ -14,19 +14,17 @@
 </head>
 
 <body>
-    <!-- Background Effects -->
-    <div class="bg-grid"></div>
-    <div class="bg-noise"></div>
-    <div class="bg-particles"></div>
-    <div class="bg-glow bg-glow-1"></div>
-    <div class="bg-glow bg-glow-2"></div>
-    <div class="bg-glow bg-glow-3"></div>
+    <!-- Background Effects Removed for Professional Look -->
 
     <!-- SIDEBAR (Desktop) -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <a href="/" class="logo">
-                <div class="logo-icon">✦</div>
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                </div>
                 <h1>ClinixAI</h1>
             </a>
         </div>
@@ -108,7 +106,11 @@
         <div class="header-content">
             <div class="mobile-logo-wrapper">
                 <a href="/" class="logo">
-                    <div class="logo-icon">✦</div>
+                    <div class="logo-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
+                        </svg>
+                    </div>
                     <h1>ClinixAI</h1>
                 </a>
             </div>
@@ -175,11 +177,44 @@
                 </div>
             </div>
 
+            <!-- Categories Ribbon -->
+            <div class="category-ribbon">
+                <button class="cat-pill active" onclick="filterByCategory('')">All Guidelines</button>
+                <button class="cat-pill" onclick="filterByCategory('General')">🩺 General</button>
+                <button class="cat-pill" onclick="filterByCategory('Pediatrics')">👶 Pediatrics</button>
+                <button class="cat-pill" onclick="filterByCategory('First Aid')">🩹 First Aid</button>
+                <button class="cat-pill" onclick="filterByCategory('Emergency')">🚨 Emergency</button>
+            </div>
+
+            <!-- Emergency & Urgent Care Section -->
+            <div class="emergency-urgent-section">
+                <div class="urgent-card" onclick="navigateTo('emergency')">
+                    <div class="urgent-icon">🆘</div>
+                    <div class="urgent-info">
+                        <h3>Emergency Protocols</h3>
+                        <p>Immediate steps for life-threatening situations.</p>
+                    </div>
+                    <span class="urgent-arrow">→</span>
+                </div>
+                <div class="urgent-card warning" onclick="navigateTo('symptoms')">
+                    <div class="urgent-icon">⚠️</div>
+                    <div class="urgent-info">
+                        <h3>Critical Triage</h3>
+                        <p>Analyze urgent symptoms and get guidance.</p>
+                    </div>
+                    <span class="urgent-arrow">→</span>
+                </div>
+            </div>
+
             <div class="section-header">
-                <div class="results-count">Showing <strong id="showingCount">0</strong> guidelines</div>
-                <div class="view-toggle">
-                    <button class="view-btn active" onclick="setView('grid')">&#9638;</button>
-                    <button class="view-btn" onclick="setView('list')">&#9776;</button>
+                <h3>Clinical Guidelines</h3>
+                <div class="header-filters">
+                    <select id="severityFilter" onchange="filterBySeverity(this.value)">
+                        <option value="">All Severities</option>
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                    </select>
                 </div>
             </div>
 
@@ -313,25 +348,65 @@
 
         <!-- ==================== AI CHAT PAGE ==================== -->
         <div id="chatPage" class="page">
-            <div class="page-header">
-                <h2>✨ ClinixAI Assistant</h2>
-                <p>Discuss your symptoms or health questions with our advanced medical AI</p>
-            </div>
-
-            <div class="chat-container">
-                <div class="chat-messages" id="chatMessages">
-                    <div class="message system">
-                        <div class="message-content">
-                            Hello! I am your ClinixAI assistant. How can I help you today? 
-                            <br><small>Disclaimer: I am an AI, not a doctor. In emergencies, call 911 immediately.</small>
+            <div class="chat-layout">
+                <aside class="chat-sidebar">
+                    <div class="chat-new">
+                        <button class="btn-new-chat" onclick="resetChat()">
+                            <span>+</span> New Conversation
+                        </button>
+                    </div>
+                    <div class="chat-history">
+                        <span class="history-label">Recent Queries</span>
+                        <div id="chatHistoryList" class="history-list">
+                            <!-- Populated by JS -->
                         </div>
                     </div>
-                </div>
-                <div class="chat-input-area">
-                    <textarea id="chatInput" placeholder="Type your health question..." rows="1"></textarea>
-                    <button class="btn-send" onclick="sendMessage()">
-                        <span>🚀</span>
-                    </button>
+                    <div class="chat-disclaimer">
+                        <span class="warning-icon">⚠️</span>
+                        <p>AI is for informational purposes only and is not a substitute for professional medical advice.</p>
+                    </div>
+                </aside>
+
+                <div class="chat-main">
+                    <div class="chat-header">
+                        <div class="ai-status">
+                            <div class="status-dot"></div>
+                            <span>ClinixAI v2.0 Online</span>
+                        </div>
+                        <div class="chat-actions">
+                            <button class="chat-action-btn" title="Clear Chat" onclick="resetChat()">🗑️</button>
+                            <button class="chat-action-btn" title="Export Chat">📤</button>
+                        </div>
+                    </div>
+
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message ai">
+                            <div class="message-avatar">✨</div>
+                            <div class="message-content">
+                                <p>Hello! I am your <strong>ClinixAI</strong> assistant. I can help you understand symptoms, provide first aid guidance, or explain medical terms.</p>
+                                <p>What's on your mind today?</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-bottom">
+                        <div class="quick-suggestions" id="quickSuggestions">
+                            <button onclick="setChatInput('What are the symptoms of common cold?')">🤧 Common Cold</button>
+                            <button onclick="setChatInput('How to treat a minor burn at home?')">🔥 Minor Burn</button>
+                            <button onclick="setChatInput('What should I do if I have a persistent headache?')">🤕 Headache</button>
+                        </div>
+                        <div class="chat-input-area">
+                            <div class="input-wrapper">
+                                <textarea id="chatInput" placeholder="Describe your symptoms or ask a medical question..." rows="1" oninput="autoResize(this)"></textarea>
+                                <div class="input-actions">
+                                    <button class="btn-attachment">📎</button>
+                                    <button class="btn-send" onclick="sendMessage()">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -647,7 +722,11 @@
     <div class="overlay active" id="loginOverlay" style="display: flex; align-items: center; justify-content: center; z-index: 2000;">
         <div class="login-modal">
             <div class="login-header">
-                <div class="logo-icon" style="margin: 0 auto 1rem;">âœ¦</div>
+                <div class="logo-icon" style="margin: 0 auto 1rem;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                </div>
                 <h2>Welcome to ClinixAI</h2>
                 <p>Your AI-Powered Medical Companion</p>
             </div>
@@ -670,12 +749,49 @@
     </div>
 
     <!-- Footer -->
-    <footer>
-        <p><strong>Disclaimer:</strong> For educational purposes only. Not medical advice. Consult a licensed healthcare
-            provider.</p>
-        <p style="margin-top: 0.5rem;">ClinixAI v1.0 &copy; 2026 | Built for healthcare professionals &amp; patients |
-            <a href="/docs" target="_blank">API Docs</a>
-        </p>
+    <footer class="main-footer">
+        <div class="footer-content">
+            <div class="footer-top">
+                <div class="footer-brand">
+                    <div class="logo">
+                        <div class="logo-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        <h3>ClinixAI</h3>
+                    </div>
+                    <p>Advanced AI-powered medical platform for healthcare professionals and patients.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-link-group">
+                        <span>Platform</span>
+                        <a href="#" onclick="navigateTo('home')">Home</a>
+                        <a href="#" onclick="navigateTo('symptoms')">Symptoms</a>
+                        <a href="#" onclick="navigateTo('drugs')">Drug Database</a>
+                    </div>
+                    <div class="footer-link-group">
+                        <span>Resources</span>
+                        <a href="#" onclick="navigateTo('emergency')">Emergency</a>
+                        <a href="#" onclick="navigateTo('encyclopedia')">Wikipedia</a>
+                        <a href="#" onclick="navigateTo('chat')">AI Chat</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div class="footer-disclaimer">
+                    <strong>Medical Disclaimer:</strong> For educational purposes only. Not medical advice. Always consult a licensed healthcare provider for medical concerns.
+                </div>
+                <div class="footer-info">
+                    <p>&copy; 2026 ClinixAI. All rights reserved.</p>
+                    <div class="footer-meta">
+                        <span>v1.1.0</span>
+                        <span class="separator">|</span>
+                        <span>Secure Connection</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </footer>
 
     <script src="/static/app.js"></script>

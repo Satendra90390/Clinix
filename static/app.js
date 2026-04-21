@@ -214,54 +214,56 @@ function renderCards(data) {
     const emptyState = document.getElementById('emptyState');
     const items = data || getFilteredGuidelines();
     grid.innerHTML = '';
-    grid.className = currentView === 'grid' ? 'guidelines-grid' : 'guidelines-list';
 
     if (items.length === 0) {
         emptyState.style.display = 'block';
-        document.getElementById('showingCount').textContent = '0';
         return;
     }
 
     emptyState.style.display = 'none';
-    document.getElementById('showingCount').textContent = items.length;
 
     items.forEach(g => {
         const card = document.createElement('article');
         card.className = 'card';
-        const medsPreview = (g.medicines || []).slice(0, 3);
-        const extraCount = (g.medicines || []).length - 3;
-        const stepsPreview = (g.steps || []).slice(0, 2);
-
+        
         card.innerHTML = `
-            <div class="card-top">
-                <div class="card-badges">
-                    <span class="badge-category">${g.category}</span>
-                    <span class="badge-severity sev-${g.severity}">${g.severity.toUpperCase()}</span>
-                </div>
-                <div class="card-actions">
-                    <button class="icon-btn bookmarked-${bookmarks.includes(g.id)}" onclick="event.stopPropagation(); bookmarkItem(${g.id})" title="Bookmark">&#9734;</button>
-                    <button class="icon-btn" onclick="event.stopPropagation(); openEditModal(${g.id})" title="Edit">&#9998;</button>
-                    <button class="icon-btn delete" onclick="event.stopPropagation(); deleteGuideline(${g.id})" title="Delete">&#10005;</button>
-                </div>
-            </div>
+            <div class="card-status ${g.severity}"></div>
+            <span class="card-category">${g.category}</span>
             <h2 class="card-title">${g.title}</h2>
             <p class="card-summary">${g.summary}</p>
-            ${g.steps && g.steps.length > 0 ? `
-            <div class="steps-preview">
-                ${stepsPreview.map((s, i) => `<div class="step-chip"><span>${i + 1}</span> ${s.substring(0, 50)}${s.length > 50 ? '...' : ''}</div>`).join('')}
-                ${g.steps.length > 2 ? `<div class="step-chip">+${g.steps.length - 2} more steps</div>` : ''}
-            </div>` : ''}
+            
+            <div class="card-medicines">
+                ${(g.medicines || []).slice(0, 3).map(m => `
+                    <span class="med-tag">💊 ${m}</span>
+                `).join('')}
+                ${(g.medicines || []).length > 3 ? `<span class="med-tag">+${g.medicines.length - 3}</span>` : ''}
+            </div>
+
             <div class="card-footer">
-                <div class="medicines-preview">
-                    ${medsPreview.map(m => `<span class="med-chip">${m}</span>`).join('')}
-                    ${extraCount > 0 ? `<span class="med-chip">+${extraCount} more</span>` : ''}
+                <div class="view-btn-premium">
+                    View Protocol <span>→</span>
                 </div>
-                <span class="view-details-btn">View &#8594;</span>
+                <div class="card-actions">
+                    <button class="icon-btn" onclick="event.stopPropagation(); bookmarkItem(${g.id})">${bookmarks.includes(g.id) ? '🔖' : '🔖'}</button>
+                </div>
             </div>
         `;
         card.onclick = () => openDetailModal(g);
         grid.appendChild(card);
     });
+}
+
+function filterByCategory(cat) {
+    currentCategory = cat;
+    document.querySelectorAll('.cat-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.includes(cat) || (cat === '' && btn.textContent === 'All Guidelines'));
+    });
+    renderCards();
+}
+
+function filterBySeverity(sev) {
+    currentSeverity = sev;
+    renderCards();
 }
 
 function setView(view) {
@@ -1077,23 +1079,37 @@ document.addEventListener('keydown', (e) => {
 // ================================================================
 // AI CHAT (Step 1)
 // ================================================================
-function sendMessage() {
+async function sendMessage() {
     const input = document.getElementById('chatInput');
     const text = input.value.trim();
     if (!text) return;
 
     appendMessage('user', text);
     input.value = '';
+    input.style.height = 'auto';
     
-    // Simulate AI thinking
+    // Agentic Thinking Simulation
     const chatMessages = document.getElementById('chatMessages');
-    const typingIndicator = document.createElement('div');
-    typingIndicator.className = 'message ai typing';
-    typingIndicator.innerHTML = '<div class="message-content">ClinixAI is thinking...</div>';
-    chatMessages.appendChild(typingIndicator);
+    const thinkingDiv = document.createElement('div');
+    thinkingDiv.className = 'message ai thinking-process';
+    thinkingDiv.id = 'thinkingIndicator';
+    thinkingDiv.innerHTML = `
+        <div class="message-avatar">✨</div>
+        <div class="message-content">
+            <div class="thinking-steps">
+                <div class="step active" id="step1">🔍 Analyzing your query...</div>
+                <div class="step" id="step2">🌐 Searching CDC.gov & WHO.int...</div>
+                <div class="step" id="step3">⚖️ Verifying with Clinical Guidelines...</div>
+            </div>
+        </div>
+    `;
+    chatMessages.appendChild(thinkingDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    // Call actual API
+    // Simulate thinking steps
+    setTimeout(() => document.getElementById('step2')?.classList.add('active'), 800);
+    setTimeout(() => document.getElementById('step3')?.classList.add('active'), 1600);
+
     try {
         const res = await fetch('/api/chat', {
             method: 'POST',
@@ -1101,21 +1117,132 @@ function sendMessage() {
             body: JSON.stringify({ message: text })
         });
         const result = await res.json();
-        chatMessages.removeChild(typingIndicator);
-        appendMessage('ai', result.response);
+        
+        // Wait a bit to finish the "thinking" feel
+        setTimeout(() => {
+            const indicator = document.getElementById('typingIndicator');
+            const thinking = document.getElementById('thinkingIndicator');
+            if (indicator) chatMessages.removeChild(indicator);
+            if (thinking) chatMessages.removeChild(thinking);
+            
+            appendAdvancedMessage(result);
+            updateChatHistory(text);
+        }, 2000);
     } catch (err) {
-        chatMessages.removeChild(typingIndicator);
-        appendMessage('ai', "I'm sorry, I'm having trouble connecting to the medical brain right now.");
+        const indicator = document.getElementById('thinkingIndicator');
+        if (indicator) chatMessages.removeChild(indicator);
+        appendMessage('ai', "I'm sorry, I'm having trouble connecting to my knowledge base. Please try again.");
     }
+}
+
+function appendAdvancedMessage(data) {
+    const chatMessages = document.getElementById('chatMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message ai';
+    
+    // Simple Markdown-like formatting
+    let formattedText = data.response
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n- (.*)/g, '<br>• $1')
+        .replace(/\n/g, '<br>');
+
+    let sourceHTML = data.source ? `<div class="message-source">Source: <strong>${data.source}</strong></div>` : '';
+    let refHTML = data.references && data.references.length > 0 ? `
+        <div class="message-references">
+            <span>References:</span>
+            ${data.references.map(ref => `<a href="${ref}" target="_blank">${new URL(ref).hostname}</a>`).join('')}
+        </div>
+    ` : '';
+    
+    msgDiv.innerHTML = `
+        <div class="message-avatar">✨</div>
+        <div class="message-content">
+            ${formattedText}
+            ${sourceHTML}
+            ${refHTML}
+        </div>
+    `;
+    chatMessages.appendChild(msgDiv);
+    
+    // Add follow-up questions
+    if (data.follow_ups && data.follow_ups.length > 0) {
+        const suggestions = document.getElementById('quickSuggestions');
+        suggestions.innerHTML = data.follow_ups.map(q => `
+            <button onclick="setChatInput('${q}')">${q}</button>
+        `).join('');
+    }
+
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function appendMessage(type, text) {
     const chatMessages = document.getElementById('chatMessages');
     const msgDiv = document.createElement('div');
     msgDiv.className = `message ${type}`;
-    msgDiv.innerHTML = `<div class="message-content">${text}</div>`;
+    
+    const avatar = type === 'ai' ? '✨' : '👤';
+    
+    // Simple Markdown-like formatting
+    let formattedText = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n- (.*)/g, '<br>• $1')
+        .replace(/\n/g, '<br>');
+    
+    msgDiv.innerHTML = `
+        <div class="message-avatar">${avatar}</div>
+        <div class="message-content">
+            <p>${formattedText}</p>
+        </div>
+    `;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function resetChat() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.innerHTML = `
+        <div class="message ai">
+            <div class="message-avatar">✨</div>
+            <div class="message-content">
+                <p>Chat cleared. How else can I assist you with your health today?</p>
+            </div>
+        </div>
+    `;
+}
+
+function setChatInput(text) {
+    const input = document.getElementById('chatInput');
+    input.value = text;
+    input.focus();
+    autoResize(input);
+}
+
+function autoResize(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function updateChatHistory(query) {
+    const historyList = document.getElementById('chatHistoryList');
+    if (!historyList) return;
+    
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.textContent = query;
+    item.onclick = () => setChatInput(query);
+    
+    if (historyList.firstChild) {
+        historyList.insertBefore(item, historyList.firstChild);
+    } else {
+        historyList.appendChild(item);
+    }
+    
+    // Keep only last 10
+    while (historyList.children.length > 10) {
+        historyList.removeChild(historyList.lastChild);
+    }
 }
 
 // Enter to send in chat
@@ -1211,7 +1338,10 @@ function updateThemeUI(theme) {
 
 // Init theme
 (function() {
-    const savedTheme = localStorage.getItem('medguide_theme') || 'light';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    updateThemeUI(savedTheme);
+    const savedTheme = localStorage.getItem('medguide_theme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const theme = savedTheme || systemTheme;
+    
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeUI(theme);
 })();
