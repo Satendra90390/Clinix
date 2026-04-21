@@ -90,6 +90,14 @@ class EmergencyProtocol(Base):
     audio_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class VitalRecord(Base):
+    __tablename__ = "vitals"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), index=True)
+    type = Column(String(50)) # 'heart_rate', 'blood_pressure', 'glucose', 'weight'
+    value = Column(String(50))
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+
 class DrugCache(Base):
     __tablename__ = "drug_cache"
     id = Column(Integer, primary_key=True, index=True)
@@ -412,9 +420,48 @@ async def save_user(u: dict, db: Session = Depends(get_db)):
     db.commit()
     return {"status": "success"}
 
+@app.get("/api/vitals")
+async def get_vitals(username: str, db: Session = Depends(get_db)):
+    vitals = db.query(VitalRecord).filter(VitalRecord.username == username).order_by(VitalRecord.recorded_at.desc()).all()
+    return {"data": vitals}
+
+@app.post("/api/chat")
+async def chat_with_ai(request: Request):
+    data = await request.json()
+    message = data.get("message", "").lower()
+    
+    # Simple rule-based logic as a placeholder for a real LLM integration
+    response = "I'm listening. Could you please provide more details about your symptoms?"
+    
+    if "headache" in message:
+        response = "For a headache, ensure you're hydrated and rest in a quiet, dark room. If it's severe or persistent, please consult a doctor."
+    elif "fever" in message:
+        response = "A fever can be a sign of infection. Monitor your temperature, stay hydrated, and rest. Seek medical help if it exceeds 103°F (39.4°C)."
+    elif "stomach" in message or "abdominal" in message:
+        response = "Stomach pain can have many causes. Avoid heavy foods and stay hydrated. If the pain is sharp or localized, see a healthcare provider."
+    elif "cpr" in message or "emergency" in message:
+        response = "If this is a life-threatening emergency, call emergency services immediately! For CPR instructions, go to our Emergency Protocols section."
+        
+    return {"response": response}
+
+@app.post("/api/vitals")
+async def add_vital(request: Request, db: Session = Depends(get_db)):
+    data = await request.json()
+    new_vital = VitalRecord(
+        username=data.get("username"),
+        type=data.get("type"),
+        value=data.get("value")
+    )
+    db.add(new_vital)
+    db.commit()
+    db.refresh(new_vital)
+    return {"data": new_vital}
+
 # Export app for Vercel
 app = app
 
 if __name__ == "__main__":
     import uvicorn
+    # Create tables
+    Base.metadata.create_all(bind=engine)
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))

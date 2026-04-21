@@ -54,6 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
     buildLetterBar();
     populateEmergencyProtocols();
     loadUserProfile();
+
+    // Register Service Worker (Step 3)
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/static/sw.js')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Registration Failed', err));
+    }
 });
 
 function changeLanguage(lang) {
@@ -1066,3 +1073,145 @@ document.addEventListener('keydown', (e) => {
         if (searchInput) searchInput.focus();
     }
 });
+
+// ================================================================
+// AI CHAT (Step 1)
+// ================================================================
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    appendMessage('user', text);
+    input.value = '';
+    
+    // Simulate AI thinking
+    const chatMessages = document.getElementById('chatMessages');
+    const typingIndicator = document.createElement('div');
+    typingIndicator.className = 'message ai typing';
+    typingIndicator.innerHTML = '<div class="message-content">ClinixAI is thinking...</div>';
+    chatMessages.appendChild(typingIndicator);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Call actual API
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const result = await res.json();
+        chatMessages.removeChild(typingIndicator);
+        appendMessage('ai', result.response);
+    } catch (err) {
+        chatMessages.removeChild(typingIndicator);
+        appendMessage('ai', "I'm sorry, I'm having trouble connecting to the medical brain right now.");
+    }
+}
+
+function appendMessage(type, text) {
+    const chatMessages = document.getElementById('chatMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${type}`;
+    msgDiv.innerHTML = `<div class="message-content">${text}</div>`;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Enter to send in chat
+document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && document.activeElement.id === 'chatInput') {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// ================================================================
+// HEALTH TRACKER (Step 2)
+// ================================================================
+async function saveVital(e) {
+    e.preventDefault();
+    if (!currentUser) return alert('Please login to save vitals');
+
+    const data = {
+        username: currentUser.username || currentUser.email,
+        type: document.getElementById('vitalType').value,
+        value: document.getElementById('vitalValue').value
+    };
+
+    try {
+        const res = await fetch('/api/vitals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            document.getElementById('vitalForm').reset();
+            loadVitals();
+        }
+    } catch (err) {
+        console.error('Error saving vital:', err);
+    }
+}
+
+async function loadVitals() {
+    if (!currentUser) return;
+    const username = currentUser.username || currentUser.email;
+    try {
+        const res = await fetch(`/api/vitals?username=${username}`);
+        const result = await res.json();
+        renderVitals(result.data);
+    } catch (err) {
+        console.error('Error loading vitals:', err);
+    }
+}
+
+function renderVitals(vitals) {
+    const list = document.getElementById('vitalsHistory');
+    if (!vitals || vitals.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No records found. Log your first vital!</p>';
+        return;
+    }
+
+    list.innerHTML = vitals.map(v => `
+        <div class="vital-history-item">
+            <div class="vital-info">
+                <span class="vital-label">${v.type.replace('_', ' ')}</span>
+                <span class="vital-val">${v.value}</span>
+            </div>
+            <div class="vital-date">${new Date(v.recorded_at).toLocaleDateString()}</div>
+        </div>
+    `).join('');
+}
+
+// Hook into navigation
+const originalNavigateTo = navigateTo;
+window.navigateTo = function(page) {
+    originalNavigateTo(page);
+    if (page === 'vitals') loadVitals();
+};
+
+// ================================================================
+// DARK MODE (Step 4)
+// ================================================================
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('medguide_theme', newTheme);
+    
+    updateThemeUI(newTheme);
+}
+
+function updateThemeUI(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+}
+
+// Init theme
+(function() {
+    const savedTheme = localStorage.getItem('medguide_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeUI(savedTheme);
+})();

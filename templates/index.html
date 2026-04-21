@@ -6,9 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
         content="ClinixAI â€” AI-powered clinical medical information platform. Symptom checker, drug database, emergency protocols, and disease encyclopedia.">
-    <meta name="theme-color" content="#04080f">
-    <meta name="keywords"
-        content="medical platform, symptom checker, drug database, emergency protocols, first aid, clinical guidelines">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
     <title>ClinixAI | AI-Powered Medical Platform</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -42,6 +41,12 @@
                 </button>
                 <button class="nav-link" data-page="drugs" onclick="navigateTo('drugs')">
                     <span class="nav-icon">💊</span> Drug Database
+                </button>
+                <button class="nav-link" data-page="chat" onclick="navigateTo('chat')">
+                    <span class="nav-icon">✨</span> ClinixAI Chat
+                </button>
+                <button class="nav-link" data-page="vitals" onclick="navigateTo('vitals')">
+                    <span class="nav-icon">📊</span> Health Tracker
                 </button>
             </div>
             <div class="nav-group">
@@ -88,6 +93,10 @@
             <span class="b-nav-icon">💊</span>
             <span class="b-nav-label">Drugs</span>
         </button>
+        <button class="b-nav-item" data-page="chat" onclick="navigateTo('chat')">
+            <span class="b-nav-icon">✨</span>
+            <span class="b-nav-label">AI Chat</span>
+        </button>
         <button class="b-nav-item" data-page="profile" onclick="navigateTo('profile')">
             <span class="b-nav-icon">👤</span>
             <span class="b-nav-label">Profile</span>
@@ -108,6 +117,9 @@
                 <input type="text" id="globalSearch" placeholder="Search anything...">
             </div>
             <div class="header-right">
+                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" style="margin-right: 1rem;">
+                    <span id="themeIcon">🌙</span>
+                </button>
                 <select id="languageSelect" class="lang-selector-modern" onchange="changeLanguage(this.value)">
                     <option value="en">🇺🇸 EN</option>
                     <option value="hi">🇮🇳 HI</option>
@@ -296,6 +308,68 @@
                     <button class="btn-secondary" onclick="addDrugInput()">+ Add Drug</button>
                 </div>
                 <div class="interaction-results" id="interactionResults" style="display: none; margin-top: 1rem;"></div>
+            </div>
+        </div>
+
+        <!-- ==================== AI CHAT PAGE ==================== -->
+        <div id="chatPage" class="page">
+            <div class="page-header">
+                <h2>✨ ClinixAI Assistant</h2>
+                <p>Discuss your symptoms or health questions with our advanced medical AI</p>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        <div class="message-content">
+                            Hello! I am your ClinixAI assistant. How can I help you today? 
+                            <br><small>Disclaimer: I am an AI, not a doctor. In emergencies, call 911 immediately.</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="chatInput" placeholder="Type your health question..." rows="1"></textarea>
+                    <button class="btn-send" onclick="sendMessage()">
+                        <span>🚀</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== HEALTH TRACKER PAGE ==================== -->
+        <div id="vitalsPage" class="page">
+            <div class="page-header">
+                <h2>📊 Health Tracker</h2>
+                <p>Track your vitals and monitor your health progress over time</p>
+            </div>
+
+            <div class="vitals-grid">
+                <div class="card vital-input-card">
+                    <h3>Log New Vital</h3>
+                    <form id="vitalForm" onsubmit="saveVital(event)">
+                        <div class="form-group">
+                            <label>Vital Type</label>
+                            <select id="vitalType" required>
+                                <option value="heart_rate">Heart Rate (bpm)</option>
+                                <option value="blood_pressure">Blood Pressure (mmHg)</option>
+                                <option value="glucose">Blood Glucose (mg/dL)</option>
+                                <option value="weight">Body Weight (kg)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Value</label>
+                            <input type="text" id="vitalValue" placeholder="e.g. 72 or 120/80" required>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%">Save Vital</button>
+                    </form>
+                </div>
+
+                <div class="card vitals-history-card">
+                    <h3>Recent History</h3>
+                    <div id="vitalsHistory" class="vitals-history-list">
+                        <p style="color: var(--text-muted); text-align: center;">No records found. Log your first vital!</p>
+                    </div>
+                </div>
             </div>
         </div>
 
