@@ -173,7 +173,7 @@ function setupSearch() {
             if (query.length >= 2) {
                 const res = await fetch(`/api/guidelines?category=${currentCategory}`);
                 const data = await res.json();
-                allGuidelines = data.data;
+                allGuidelines = data;
                 const filtered = allGuidelines.filter(g =>
                     g.title.toLowerCase().includes(query.toLowerCase()) ||
                     g.summary.toLowerCase().includes(query.toLowerCase()) ||
@@ -185,17 +185,32 @@ function setupSearch() {
             }
         }, 300);
     });
+
+    const encySearch = document.getElementById('encyclopediaSearch');
+    if (encySearch) {
+        encySearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchWikipedia();
+        });
+    }
 }
 
 // NAVIGATION
 function navigateTo(page) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(page + 'Page').classList.add('active');
-    document.querySelector(`.nav-tab[data-page="${page}"]`).classList.add('active');
+    
+    const targetPage = document.getElementById(page + 'Page');
+    if (targetPage) targetPage.classList.add('active');
+    
+    const targetTab = document.querySelector(`.nav-tab[data-page="${page}"]`);
+    if (targetTab) targetTab.classList.add('active');
 
-    if (page === 'encyclopedia') populateEncyclopedia();
+    if (page === 'encyclopedia') {
+        // Initial letter bar if needed
+        if (document.getElementById('letterBar').children.length <= 1) buildLetterBar();
+    }
     if (page === 'profile') loadUserProfile();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // DETAIL MODAL
@@ -681,50 +696,75 @@ function callEmergency() {
     }
 }
 
-// ENCYCLOPEDIA
+// WIKIPEDIA SEARCH (Replaced Encyclopedia)
+async function searchWikipedia() {
+    const query = document.getElementById('encyclopediaSearch').value.trim();
+    if (!query) return;
+
+    const list = document.getElementById('encyclopediaList');
+    list.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon" style="animation: spin 2s linear infinite;">&#127760;</div>
+            <h3>Searching Wikipedia...</h3>
+            <p>Fetching the latest medical information for "${query}"</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts|pageimages&exintro&explaintext&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=10&origin=*`);
+        const data = await response.json();
+
+        if (data.query && data.query.pages) {
+            const pages = Object.values(data.query.pages).sort((a, b) => a.index - b.index);
+            list.innerHTML = pages.map(page => `
+                <div class="encyclopedia-item" onclick="window.open('https://en.wikipedia.org/?curid=${page.pageid}', '_blank')">
+                    <h4>${page.title}</h4>
+                    <p>${page.extract ? page.extract.substring(0, 350) + (page.extract.length > 350 ? '...' : '') : 'No detailed description available.'}</p>
+                    <div class="encyclopedia-badges">
+                        <span class="badge-category">Wikipedia Article</span>
+                        <span class="badge-severity sev-mild">MEDICAL INFO</span>
+                        <span style="margin-left: auto; color: var(--accent-blue); font-size: 0.8rem;">Read More &rarr;</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            list.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">&#9888;</div>
+                    <h3>No Results Found</h3>
+                    <p>Wikipedia doesn't seem to have a direct match for "${query}". Try a more general term.</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        list.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">&#10060;</div>
+                <h3>Search Failed</h3>
+                <p>Could not connect to Wikipedia. Please check your internet connection.</p>
+            </div>
+        `;
+    }
+}
+
 function buildLetterBar() {
     const bar = document.getElementById('letterBar');
     if (!bar) return;
+    bar.innerHTML = '';
 
-    for (let i = 65; i <= 90; i++) {
-        const letter = String.fromCharCode(i);
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    letters.forEach(letter => {
         const btn = document.createElement('button');
         btn.className = 'letter-btn';
         btn.textContent = letter;
-        btn.onclick = () => filterByLetter(letter);
+        btn.onclick = () => {
+            document.querySelectorAll('.letter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('encyclopediaSearch').value = letter;
+            searchWikipedia();
+        };
         bar.appendChild(btn);
-    }
-}
-
-function filterByLetter(letter) {
-    document.querySelectorAll('.letter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.letter-btn[onclick="filterByLetter('${letter}')"]`)?.classList.add('active');
-    populateEncyclopedia(letter);
-}
-
-function populateEncyclopedia(letter = null) {
-    const list = document.getElementById('encyclopediaList');
-    if (!list) return;
-
-    let items = allGuidelines;
-    if (letter) items = items.filter(g => g.title.toUpperCase().startsWith(letter));
-    items.sort((a, b) => a.title.localeCompare(b.title));
-
-    if (items.length === 0) {
-        list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 2rem;">No conditions found</p>';
-        return;
-    }
-
-    list.innerHTML = items.map(g => `
-        <div class="encyclopedia-item" onclick="openDetailModal(allGuidelines.find(x => x.id === ${g.id}))">
-            <h4>${g.title}</h4>
-            <p>${g.summary.substring(0, 100)}${g.summary.length > 100 ? '...' : ''}</p>
-            <div class="encyclopedia-badges">
-                <span class="badge-category">${g.category}</span>
-                <span class="badge-severity sev-${g.severity}">${g.severity.toUpperCase()}</span>
-            </div>
-        </div>
-    `).join('');
+    });
 }
 
 // PROFILE

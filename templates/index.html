@@ -46,7 +46,7 @@
                     <span class="tab-icon">&#128682;</span> Emergency
                 </button>
                 <button class="nav-tab" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
-                    <span class="tab-icon">&#128218;</span> Encyclopedia
+                    <span class="tab-icon">&#127760;</span> Wikipedia
                 </button>
                 <button class="nav-tab" data-page="profile" onclick="navigateTo('profile')">
                     <span class="tab-icon">&#128100;</span> Profile
@@ -114,8 +114,8 @@
                 {% for g in guidelines %}
                 <article class="card" data-id="{{ g.id }}" data-category="{{ g.category }}" data-title="{{ g.title }}"
                     data-summary="{{ g.summary }}" data-severity="{{ g.get('severity', 'mild') }}"
-                    data-medicines='{{ g.get("medicines", []) | join(", ") }}'
-                    data-steps='{{ g.get("steps", []) | join("||") }}'>
+                    data-medicines='{{ g.get("medicines", []) | tojson }}'
+                    data-steps='{{ g.get("steps", []) | tojson }}'>
                     <div class="card-top">
                         <div class="card-badges">
                             <span class="badge-category">{{ g.category }}</span>
@@ -276,21 +276,30 @@
         <!-- ==================== ENCYCLOPEDIA PAGE ==================== -->
         <div id="encyclopediaPage" class="page">
             <div class="page-header">
-                <h2>&#128218; Disease Encyclopedia</h2>
-                <p>Browse medical conditions A-Z</p>
+                <h2>&#127760; Wikipedia Medical Search</h2>
+                <p>Get reliable medical information directly from Wikipedia</p>
             </div>
 
             <div class="encyclopedia-controls">
-                <div class="letter-bar" id="letterBar">
-                    <button class="letter-btn active" onclick="filterByLetter('')">All</button>
+                <div class="search-bar-full" style="display: flex; gap: 0.5rem;">
+                    <div style="position: relative; flex: 1;">
+                        <span class="search-icon">&#128269;</span>
+                        <input type="text" id="encyclopediaSearch" class="search-input" placeholder="Search medical conditions on Wikipedia...">
+                    </div>
+                    <button class="btn-primary" onclick="searchWikipedia()" style="width: auto; margin-top: 0; padding: 0 1.5rem;">Search</button>
                 </div>
-                <div class="search-bar-full">
-                    <span class="search-icon">&#128269;</span>
-                    <input type="text" id="encyclopediaSearch" class="search-input" placeholder="Search conditions...">
+                <div class="letter-bar" id="letterBar" style="margin-top: 1.5rem;">
+                    <!-- Populated dynamically -->
                 </div>
             </div>
 
-            <div class="encyclopedia-list" id="encyclopediaList"></div>
+            <div class="encyclopedia-list" id="encyclopediaList">
+                <div class="empty-state">
+                    <div class="empty-icon">&#127760;</div>
+                    <h3>Search Wikipedia</h3>
+                    <p>Enter a condition or disease to get information from Wikipedia</p>
+                </div>
+            </div>
         </div>
 
         <!-- ==================== PROFILE PAGE ==================== -->

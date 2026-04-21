@@ -797,6 +797,33 @@ header {
 textarea.form-control { resize: vertical; min-height: 100px; }
 .btn-primary { background: var(--grad-primary); color: white; border: none; padding: 1rem; width: 100%; border-radius: var(--radius-md); font-size: 1rem; font-weight: bold; cursor: pointer; transition: var(--transition-base); font-family: inherit; box-shadow: var(--shadow-glow-blue); margin-top: 1rem;}
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4); }
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Encyclopedia Badge Color Tweaks */
+.encyclopedia-badges {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    align-items: center;
+}
+
+.encyclopedia-item h4 {
+    background: var(--grad-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .header-inner { padding: 1rem; }
+    .nav-tabs { order: 3; width: 100%; justify-content: center; }
+    .hero-stats { grid-template-columns: 1fr 1fr; }
+    .symptom-checker-layout, .profile-layout { grid-template-columns: 1fr; }
+}
 
 .bookmark-item { background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; transition: var(--transition-fast); cursor: pointer;}
 .bookmark-item:hover { background: rgba(59, 130, 246, 0.15); transform: translateX(3px); }

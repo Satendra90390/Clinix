@@ -285,15 +285,53 @@ async def search_drugs(q: str = Query(..., min_length=2), db: Session = Depends(
         return {"source": "fda", "data": fda_data}
     return {"error": "Not found"}
 
+@app.post("/api/drugs/interactions")
+async def check_interactions(drugs: List[str]):
+    # This is a simplified version since FDA API interaction checking is complex
+    # We will search each drug and look for 'interactions' field
+    results = []
+    for drug in drugs:
+        data = await fetch_drug_from_fda(drug)
+        if data and data.get("interactions"):
+            results.append({"drug": drug, "interactions": [data["interactions"]]})
+    return {"interactions_found": results}
+
 @app.get("/api/symptoms/check")
 async def check_symptoms(symptoms: str):
     s_list = [s.strip().lower() for s in symptoms.split(",")]
     results = []
+    max_triage = "first_aid"
+    
     for s in s_list:
+        match = None
         for k, v in SYMPTOM_TRIAGE.items():
             if k in s or s in k:
-                results.append({"symptom": s, "triage": v["triage"], "conditions": v["conditions"]})
-    return results
+                match = v
+                break
+        
+        if match:
+            results.append({
+                "symptom": s, 
+                "triage_level": match["triage"], 
+                "possible_conditions": match["conditions"],
+                "action": "Seek medical advice if symptoms persist"
+            })
+            if match["triage"] == "emergency":
+                max_triage = "emergency"
+            elif match["triage"] == "doctor" and max_triage != "emergency":
+                max_triage = "doctor"
+        else:
+            results.append({
+                "symptom": s, 
+                "triage_level": "mild", 
+                "possible_conditions": ["Minor ailment"],
+                "action": "Monitor and rest"
+            })
+            
+    return {
+        "recommended_action": max_triage,
+        "results": results
+    }
 
 @app.get("/api/emergency-protocols")
 async def get_protocols_api(db: Session = Depends(get_db)):
@@ -309,7 +347,70 @@ async def create_guideline(g: dict, db: Session = Depends(get_db)):
     db.add(new_g)
     db.commit()
     db.refresh(new_g)
-    return new_g
+    # Return serializable data
+    return {
+        "status": "success",
+        "data": {
+            "id": new_g.id, "title": new_g.title, "summary": new_g.summary,
+            "category": new_g.category, "severity": new_g.severity,
+            "medicines": meds, "steps": stps
+        }
+    }
+
+@app.put("/api/guidelines/{id}")
+async def update_guideline(id: int, g: dict, db: Session = Depends(get_db)):
+    db_g = db.query(Guideline).filter(Guideline.id == id).first()
+    if not db_g:
+        raise HTTPException(status_code=404, detail="Guideline not found")
+    
+    db_g.title = g.get("title", db_g.title)
+    db_g.summary = g.get("summary", db_g.summary)
+    db_g.category = g.get("category", db_g.category)
+    db_g.severity = g.get("severity", db_g.severity)
+    
+    # Re-extract steps if summary changed
+    if "summary" in g:
+        db_g.steps = extract_steps(g["summary"])
+    
+    db.commit()
+    db.refresh(db_g)
+    return {
+        "status": "success",
+        "data": {
+            "id": db_g.id, "title": db_g.title, "summary": db_g.summary,
+            "category": db_g.category, "severity": db_g.severity,
+            "medicines": safe_json_loads(db_g.medicines),
+            "steps": safe_json_loads(db_g.steps)
+        }
+    }
+
+@app.delete("/api/guidelines/{id}")
+async def delete_guideline_api(id: int, db: Session = Depends(get_db)):
+    db_g = db.query(Guideline).filter(Guideline.id == id).first()
+    if not db_g:
+        raise HTTPException(status_code=404, detail="Guideline not found")
+    db.delete(db_g)
+    db.commit()
+    return {"status": "success"}
+
+@app.post("/api/users")
+async def save_user(u: dict, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == u["username"]).first()
+    if not user:
+        user = User(
+            username=u["username"],
+            email=u.get("email"),
+            user_type=u.get("user_type", "patient"),
+            profile_data=u.get("profile_data", {})
+        )
+        db.add(user)
+    else:
+        user.email = u.get("email", user.email)
+        user.user_type = u.get("user_type", user.user_type)
+        user.profile_data = u.get("profile_data", user.profile_data)
+    
+    db.commit()
+    return {"status": "success"}
 
 # Export app for Vercel
 app = app
