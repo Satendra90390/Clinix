@@ -323,8 +323,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .sidebar-footer {
-    padding: 1rem;
+    padding: 0.75rem;
     border-top: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
 }
 
 .user-pill {
@@ -332,13 +336,36 @@ h1, h2, h3, h4, h5, h6 {
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     cursor: pointer;
     transition: var(--transition);
+    flex: 1;
+    min-width: 0;
 }
 
 .user-pill:hover {
-    background: var(--border-light);
+    background: var(--bg-main);
+}
+
+.logout-btn-sidebar {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.logout-btn-sidebar:hover {
+    background: #fee2e2;
+    color: #ef4444;
+    border-color: #fecaca;
 }
 
 .user-pill img {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description"
-        content="ClinixAI â€” AI-powered clinical medical information platform. Symptom checker, drug database, emergency protocols, and disease encyclopedia.">
+        content="ClinixAI — AI-powered clinical medical information platform. Symptom checker, drug database, emergency protocols, and disease encyclopedia.">
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#3b82f6">
     <title>ClinixAI | AI-Powered Medical Platform</title>
@@ -71,6 +71,9 @@
                     <span class="user-status">Online</span>
                 </div>
             </div>
+            <button class="logout-btn-sidebar" onclick="logout()" title="Sign Out">
+                <span>&#10162;</span>
+            </button>
         </div>
     </aside>
 
@@ -180,10 +183,10 @@
             <!-- Categories Ribbon -->
             <div class="category-ribbon">
                 <button class="cat-pill active" onclick="filterByCategory('')">All Guidelines</button>
-                <button class="cat-pill" onclick="filterByCategory('General')">🩺 General</button>
-                <button class="cat-pill" onclick="filterByCategory('Pediatrics')">👶 Pediatrics</button>
                 <button class="cat-pill" onclick="filterByCategory('First Aid')">🩹 First Aid</button>
                 <button class="cat-pill" onclick="filterByCategory('Emergency')">🚨 Emergency</button>
+                <button class="cat-pill" onclick="filterByCategory('Mental Health')">🧠 Mental Health</button>
+                <button class="cat-pill" onclick="filterByCategory('Nutrition')">🥗 Nutrition</button>
             </div>
 
             <!-- Emergency & Urgent Care Section -->
@@ -209,12 +212,7 @@
             <div class="section-header">
                 <h3>Clinical Guidelines</h3>
                 <div class="header-filters">
-                    <select id="severityFilter" onchange="filterBySeverity(this.value)">
-                        <option value="">All Severities</option>
-                        <option value="mild">Mild</option>
-                        <option value="moderate">Moderate</option>
-                        <option value="severe">Severe</option>
-                    </select>
+                    <span class="results-count">Showing <strong id="showingCount">{{ guidelines|length }}</strong> guidelines</span>
                 </div>
             </div>
 
@@ -718,35 +716,6 @@
         </div>
     </div>
 
-    <!-- Login Modal -->
-    <div class="overlay active" id="loginOverlay" style="display: flex; align-items: center; justify-content: center; z-index: 2000;">
-        <div class="login-modal">
-            <div class="login-header">
-                <div class="logo-icon" style="margin: 0 auto 1rem;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
-                    </svg>
-                </div>
-                <h2>Welcome to ClinixAI</h2>
-                <p>Your AI-Powered Medical Companion</p>
-            </div>
-            <div class="login-body">
-                <div id="googleBtn" class="login-option">
-                    <!-- Google Sign-In will be rendered here -->
-                </div>
-                <div class="divider">
-                    <span>OR</span>
-                </div>
-                <button class="btn-guest" onclick="loginAsGuest()">
-                    <span class="btn-icon">&#128100;</span> Continue as Guest
-                </button>
-            </div>
-            <div class="login-footer">
-                <p>By continuing, you agree to our Terms of Service and Privacy Policy.</p>
-                <p style="margin-top: 0.5rem; font-size: 0.7rem; opacity: 0.6;">Medical Disclaimer: ClinixAI is for educational purposes only.</p>
-            </div>
-        </div>
-    </div>
 
     <!-- Footer -->
     <footer class="main-footer">

@@ -1,5 +1,6 @@
 // STATE
 let allGuidelines = [];
+let originalGuidelines = [];
 let currentCategory = '';
 let currentSeverity = '';
 let currentView = 'grid';
@@ -144,9 +145,10 @@ function loadGuidelinesFromPage() {
         summary: card.dataset.summary,
         category: card.dataset.category,
         severity: card.dataset.severity,
-        medicines: JSON.parse(card.dataset.medicines.replace(/&quot;/g, '"')),
-        steps: JSON.parse(card.dataset.steps.replace(/&quot;/g, '"')) || []
+        medicines: JSON.parse(card.dataset.medicines.replace(/"/g, '"')),
+        steps: JSON.parse(card.dataset.steps.replace(/"/g, '"')) || []
     }));
+    originalGuidelines = [...allGuidelines];
     updateStats();
     buildCategoryFilters();
     renderCards();
@@ -158,7 +160,9 @@ function updateStats() {
     document.getElementById('categoryCount').textContent = categories.length;
     const criticalUrgent = allGuidelines.filter(g => ['critical', 'urgent'].includes(g.severity)).length;
     document.getElementById('criticalCount').textContent = criticalUrgent;
-    document.getElementById('showingCount').textContent = allGuidelines.length;
+
+    const showingCount = document.getElementById('showingCount');
+    if (showingCount) showingCount.textContent = allGuidelines.length;
 }
 
 function buildCategoryFilters() {
@@ -225,27 +229,42 @@ function renderCards(data) {
     items.forEach(g => {
         const card = document.createElement('article');
         card.className = 'card';
-        
-        card.innerHTML = `
-            <div class="card-status ${g.severity}"></div>
-            <span class="card-category">${g.category}</span>
-            <h2 class="card-title">${g.title}</h2>
-            <p class="card-summary">${g.summary}</p>
-            
-            <div class="card-medicines">
-                ${(g.medicines || []).slice(0, 3).map(m => `
-                    <span class="med-tag">💊 ${m}</span>
-                `).join('')}
-                ${(g.medicines || []).length > 3 ? `<span class="med-tag">+${g.medicines.length - 3}</span>` : ''}
-            </div>
+        card.dataset.id = g.id;
+        card.dataset.category = g.category;
+        card.dataset.title = g.title;
+        card.dataset.summary = g.summary;
+        card.dataset.severity = g.severity;
+        card.dataset.medicines = JSON.stringify(g.medicines || []);
+        card.dataset.steps = JSON.stringify(g.steps || []);
 
-            <div class="card-footer">
-                <div class="view-btn-premium">
-                    View Protocol <span>→</span>
+        card.innerHTML = `
+            <div class="card-top">
+                <div class="card-badges">
+                    <span class="badge-category">${g.category}</span>
+                    <span class="badge-severity sev-${g.severity}">${(g.severity || 'mild').toUpperCase()}</span>
                 </div>
                 <div class="card-actions">
-                    <button class="icon-btn" onclick="event.stopPropagation(); bookmarkItem(${g.id})">${bookmarks.includes(g.id) ? '🔖' : '🔖'}</button>
+                    <button class="icon-btn" onclick="event.stopPropagation(); bookmarkItem(${g.id})" title="Bookmark">${bookmarks.includes(g.id) ? '&#9733;' : '&#9734;'}</button>
+                    <button class="icon-btn" onclick="event.stopPropagation(); openEditModal(${g.id})" title="Edit">&#9998;</button>
+                    <button class="icon-btn delete" onclick="event.stopPropagation(); deleteGuideline(${g.id})" title="Delete">&#10005;</button>
                 </div>
+            </div>
+            <h2 class="card-title">${g.title}</h2>
+            <p class="card-summary">${g.summary}</p>
+            ${(g.steps && g.steps.length > 0) ? `
+                <div class="steps-preview">
+                    ${g.steps.slice(0, 2).map((step, index) => `
+                        <div class="step-chip"><span>${index + 1}</span> ${step.slice(0, 50)}${step.length > 50 ? '...' : ''}</div>
+                    `).join('')}
+                    ${g.steps.length > 2 ? `<div class="step-chip">+${g.steps.length - 2} more steps</div>` : ''}
+                </div>
+            ` : ''}
+            <div class="card-footer">
+                <div class="medicines-preview">
+                    ${(g.medicines || []).slice(0, 3).map(med => `<span class="med-chip">${med}</span>`).join('')}
+                    ${(g.medicines || []).length > 3 ? `<span class="med-chip">+${g.medicines.length - 3} more</span>` : ''}
+                </div>
+                <span class="view-details-btn">View &#8594;</span>
             </div>
         `;
         card.onclick = () => openDetailModal(g);
@@ -280,19 +299,17 @@ function setupSearch() {
     if (!searchInput) return;
     searchInput.addEventListener('input', (e) => {
         clearTimeout(debounceTimeout);
-        const query = e.target.value.trim();
-        debounceTimeout = setTimeout(async () => {
+        const query = e.target.value.trim().toLowerCase();
+
+        debounceTimeout = setTimeout(() => {
             if (query.length >= 2) {
-                const res = await fetch(`/api/guidelines?category=${currentCategory}`);
-                const data = await res.json();
-                allGuidelines = data;
-                const filtered = allGuidelines.filter(g =>
-                    g.title.toLowerCase().includes(query.toLowerCase()) ||
-                    g.summary.toLowerCase().includes(query.toLowerCase()) ||
-                    (g.medicines || []).some(m => m.toLowerCase().includes(query.toLowerCase()))
+                const filtered = getFilteredGuidelines().filter(g =>
+                    g.title.toLowerCase().includes(query) ||
+                    g.summary.toLowerCase().includes(query) ||
+                    (g.medicines || []).some(m => m.toLowerCase().includes(query))
                 );
                 renderCards(filtered);
-            } else if (query.length === 0) {
+            } else {
                 renderCards();
             }
         }, 300);
@@ -634,16 +651,16 @@ async function searchDrug() {
                     </div>
                     <div class="drug-details">
                         <div class="drug-detail-item">
-                            <strong>Purpose:</strong> <p>${d.purpose}</p>
+                            <strong>Purpose:</strong> <p>${d.purpose || 'N/A'}</p>
                         </div>
                         <div class="drug-detail-item">
-                            <strong>Dosage:</strong> <p>${d.dosage}</p>
+                            <strong>Dosage:</strong> <p>${d.dosage || 'N/A'}</p>
                         </div>
                         <div class="drug-detail-item">
-                            <strong>Side Effects:</strong> <p>${d.side_effects}</p>
+                            <strong>Side Effects:</strong> <p>${d.side_effects || 'N/A'}</p>
                         </div>
                         <div class="drug-detail-item">
-                            <strong>Storage:</strong> <p>${d.storage}</p>
+                            <strong>Interactions:</strong> <p>${d.interactions || 'None found'}</p>
                         </div>
                     </div>
                 </div>
@@ -928,91 +945,36 @@ async function saveProfile(e) {
 
 // LOGIN SYSTEM
 function checkLoginStatus() {
-    const overlay = document.getElementById('loginOverlay');
-    if (!overlay) return;
+    if (!currentUser) {
+        currentUser = {
+            username: 'Guest User',
+            email: '',
+            user_type: 'guest',
+            profile_data: {}
+        };
+    }
+    updateSidebarUser();
+}
+
+function updateSidebarUser() {
+    if (!currentUser) return;
+    const nameEl = document.getElementById('sidebarUserName');
+    const imgEl = document.getElementById('sidebarUserImg');
     
-    if (currentUser) {
-        overlay.classList.remove('active');
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
-    } else {
-        overlay.classList.add('active');
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        initGoogleSignIn();
+    if (nameEl) nameEl.textContent = currentUser.username || 'User';
+    if (imgEl && currentUser.profile_data?.picture) {
+        imgEl.src = currentUser.profile_data.picture;
+    } else if (imgEl) {
+        const initials = (currentUser.username || 'U').charAt(0).toUpperCase();
+        imgEl.src = `https://ui-avatars.com/api/?name=${initials}&background=random`;
     }
-}
-
-function initGoogleSignIn() {
-    if (typeof google === 'undefined') {
-        setTimeout(initGoogleSignIn, 500);
-        return;
-    }
-
-    const clientId = "7843657345-placeholder.apps.googleusercontent.com";
-    
-    if (clientId.includes("placeholder")) {
-        console.warn("Google Client ID is a placeholder. Google Login will simulate success for demo purposes.");
-    }
-
-    google.accounts.id.initialize({
-        client_id: clientId,
-        callback: handleGoogleLogin,
-        auto_select: false,
-        cancel_on_tap_outside: true
-    });
-
-    const btnContainer = document.getElementById("googleBtn");
-    if (btnContainer) {
-        google.accounts.id.renderButton(
-            btnContainer,
-            { theme: "outline", size: "large", width: 300, shape: "pill", text: "continue_with" }
-        );
-    }
-}
-
-function handleGoogleLogin(response) {
-    const payload = parseJwt(response.credential);
-    currentUser = {
-        username: payload.name,
-        email: payload.email,
-        user_type: 'patient',
-        profile_data: {
-            picture: payload.picture,
-            google_id: payload.sub
-        }
-    };
-    saveUserAndContinue();
-}
-
-function loginAsGuest() {
-    currentUser = {
-        username: 'Guest_' + Math.floor(Math.random() * 1000),
-        email: '',
-        user_type: 'guest',
-        profile_data: {
-            guest_mode: true
-        }
-    };
-    saveUserAndContinue();
-}
-
-function saveUserAndContinue() {
-    localStorage.setItem('medguide_user', JSON.stringify(currentUser));
-    checkLoginStatus();
-    loadUserProfile();
-    fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentUser)
-    }).catch(err => console.log('Sync failed, using local storage'));
 }
 
 function logout() {
     if (confirm('Are you sure you want to log out?')) {
         localStorage.removeItem('medguide_user');
         currentUser = null;
-        location.reload();
+        window.location.href = '/login';
     }
 }
 

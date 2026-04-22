@@ -140,6 +140,59 @@ def extract_steps(summary):
         steps = [s.strip() for s in sentences if len(s.strip()) > 10]
     return steps
 
+def sanitize_text(text: str) -> str:
+    if not isinstance(text, str):
+        return text
+
+    replacements = {
+        "â€”": "—",
+        "â€™": "’",
+        "Ã¢â‚¬â„¢": "'",
+        "childrenâ€™s": "children's",
+        "Pandora": "ClinixAI",
+        "Aimed for": "Aim for",
+        "Abdonominal": "abdominal",
+        "Heart bee": "Heart Attack",
+    }
+
+    cleaned = text
+    for bad, good in replacements.items():
+        cleaned = cleaned.replace(bad, good)
+
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+def normalize_guideline_record(record: dict) -> dict:
+    title = sanitize_text(record.get("title", ""))
+    summary = sanitize_text(record.get("summary", ""))
+    category = sanitize_text(record.get("category", "First Aid"))
+    severity = (record.get("severity") or "mild").lower()
+
+    if title == "Sleep Hygiene" and summary.startswith("Aim for"):
+        summary = "Aim for 7–9 hours of quality sleep per night for optimal health."
+
+    if title == "Abdonominal Pain" or title == "Abdominal Pain":
+        title = "Abdominal Pain"
+
+    if title == "Choking":
+        summary = summary.replace("abdominal thrusts", "abdominal thrusts (Heimlich maneuver)")
+
+    if title == "Heart Attack" or title == "Heart bee":
+        title = "Heart Attack"
+        category = "Emergency"
+        severity = "critical"
+        summary = "Call emergency services immediately, keep the person seated and calm, loosen tight clothing, and seek urgent medical care."
+
+    return {
+        "id": record.get("id"),
+        "title": title,
+        "summary": summary,
+        "category": category,
+        "severity": severity,
+        "medicines": safe_json_loads(record.get("medicines", [])),
+        "steps": safe_json_loads(record.get("steps", [])) or extract_steps(summary),
+        "video_url": record.get("video_url")
+    }
+
 MEDICINES_MAP = {
     "cuts": ["Acetaminophen", "Antiseptic Cream"],
     "abrasions": ["Antibiotic Ointment", "Aquaphor"],
@@ -239,34 +292,53 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # --- Routes ---
 
+def render_index_page(request: Request, db: Session):
+    guidelines = db.query(Guideline).order_by(Guideline.id).all()
+    processed = [
+        normalize_guideline_record({
+            "id": g.id,
+            "title": g.title,
+            "summary": g.summary,
+            "category": g.category,
+            "severity": g.severity,
+            "medicines": g.medicines,
+            "steps": g.steps,
+            "video_url": g.video_url
+        })
+        for g in guidelines
+    ]
+
+    categories = ["First Aid", "Emergency", "Mental Health", "Nutrition", "Lifestyle", "Chronic Conditions"]
+    try:
+        db_cats = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
+        if db_cats:
+            categories = list(set(categories + db_cats))
+    except:
+        pass
+
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "guidelines": processed,
+            "categories": categories,
+            "disclaimer": "For educational purposes only. Not medical advice.",
+            "app_version": "1.1.0"
+        }
+    )
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, db: Session = Depends(get_db)):
+    return render_index_page(request, db)
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request, db: Session = Depends(get_db)):
+    return render_index_page(request, db)
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, db: Session = Depends(get_db)):
     try:
-        guidelines = db.query(Guideline).order_by(Guideline.id).all()
-        processed = []
-        for g in guidelines:
-            processed.append({
-                "id": g.id, "title": g.title, "summary": g.summary, "category": g.category,
-                "severity": g.severity or "mild", "medicines": safe_json_loads(g.medicines),
-                "steps": safe_json_loads(g.steps), "video_url": g.video_url
-            })
-        
-        categories = ["First Aid", "Emergency", "Mental Health", "Nutrition", "Lifestyle", "Chronic Conditions"]
-        try:
-            db_cats = [c[0] for c in db.query(Guideline.category).distinct().all() if c[0]]
-            if db_cats: categories = list(set(categories + db_cats))
-        except: pass
-
-        return templates.TemplateResponse(
-            request,
-            "index.html",
-            {
-                "guidelines": processed,
-                "categories": categories,
-                "disclaimer": "For educational purposes only. Not medical advice.",
-                "app_version": "1.1.0"
-            }
-        )
+        return render_index_page(request, db)
     except Exception as e:
         logger.error(f"Root error: {e}")
         # If it's a database connection error, try to show a more helpful message
@@ -299,12 +371,23 @@ async def health(db: Session = Depends(get_db)):
 @app.get("/api/guidelines")
 async def get_guidelines_api(category: str = None, db: Session = Depends(get_db)):
     query = db.query(Guideline)
-    if category: query = query.filter(Guideline.category == category)
+    if category:
+        query = query.filter(Guideline.category == category)
+
     results = query.all()
-    for g in results:
-        g.medicines = safe_json_loads(g.medicines)
-        g.steps = safe_json_loads(g.steps)
-    return results
+    return [
+        normalize_guideline_record({
+            "id": g.id,
+            "title": g.title,
+            "summary": g.summary,
+            "category": g.category,
+            "severity": g.severity,
+            "medicines": g.medicines,
+            "steps": g.steps,
+            "video_url": g.video_url
+        })
+        for g in results
+    ]
 
 @app.get("/api/drugs/search")
 async def search_drugs(q: str = Query(..., min_length=2), db: Session = Depends(get_db)):
@@ -374,9 +457,18 @@ async def get_protocols_api(db: Session = Depends(get_db)):
 @app.post("/api/guidelines")
 async def create_guideline(g: dict, db: Session = Depends(get_db)):
     meds, sev, stps = enrich_guideline(g["title"], g.get("summary", ""))
+    normalized = normalize_guideline_record({
+        "title": g["title"],
+        "summary": g.get("summary", ""),
+        "category": g.get("category", "First Aid"),
+        "severity": sev,
+        "medicines": meds,
+        "steps": stps
+    })
+
     new_g = Guideline(
-        title=g["title"], summary=g.get("summary", ""), category=g.get("category", "First Aid"),
-        medicines=meds, severity=sev, steps=stps
+        title=normalized["title"], summary=normalized["summary"], category=normalized["category"],
+        medicines=normalized["medicines"], severity=normalized["severity"], steps=normalized["steps"]
     )
     db.add(new_g)
     db.commit()
@@ -384,11 +476,16 @@ async def create_guideline(g: dict, db: Session = Depends(get_db)):
     # Return serializable data
     return {
         "status": "success",
-        "data": {
-            "id": new_g.id, "title": new_g.title, "summary": new_g.summary,
-            "category": new_g.category, "severity": new_g.severity,
-            "medicines": meds, "steps": stps
-        }
+        "data": normalize_guideline_record({
+            "id": new_g.id,
+            "title": new_g.title,
+            "summary": new_g.summary,
+            "category": new_g.category,
+            "severity": new_g.severity,
+            "medicines": new_g.medicines,
+            "steps": new_g.steps,
+            "video_url": new_g.video_url
+        })
     }
 
 @app.put("/api/guidelines/{id}")
@@ -401,21 +498,38 @@ async def update_guideline(id: int, g: dict, db: Session = Depends(get_db)):
     db_g.summary = g.get("summary", db_g.summary)
     db_g.category = g.get("category", db_g.category)
     db_g.severity = g.get("severity", db_g.severity)
-    
-    # Re-extract steps if summary changed
-    if "summary" in g:
-        db_g.steps = extract_steps(g["summary"])
-    
+
+    normalized = normalize_guideline_record({
+        "id": db_g.id,
+        "title": db_g.title,
+        "summary": db_g.summary,
+        "category": db_g.category,
+        "severity": db_g.severity,
+        "medicines": db_g.medicines,
+        "steps": extract_steps(db_g.summary),
+        "video_url": db_g.video_url
+    })
+
+    db_g.title = normalized["title"]
+    db_g.summary = normalized["summary"]
+    db_g.category = normalized["category"]
+    db_g.severity = normalized["severity"]
+    db_g.steps = normalized["steps"]
+
     db.commit()
     db.refresh(db_g)
     return {
         "status": "success",
-        "data": {
-            "id": db_g.id, "title": db_g.title, "summary": db_g.summary,
-            "category": db_g.category, "severity": db_g.severity,
-            "medicines": safe_json_loads(db_g.medicines),
-            "steps": safe_json_loads(db_g.steps)
-        }
+        "data": normalize_guideline_record({
+            "id": db_g.id,
+            "title": db_g.title,
+            "summary": db_g.summary,
+            "category": db_g.category,
+            "severity": db_g.severity,
+            "medicines": db_g.medicines,
+            "steps": db_g.steps,
+            "video_url": db_g.video_url
+        })
     }
 
 @app.delete("/api/guidelines/{id}")
