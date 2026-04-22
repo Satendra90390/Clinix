@@ -56,11 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadUserProfile();
 
     // Register Service Worker (Step 3)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/static/sw.js')
-            .then(reg => console.log('SW Registered'))
-            .catch(err => console.log('SW Registration Failed', err));
-    }
 });
 
 function changeLanguage(lang) {

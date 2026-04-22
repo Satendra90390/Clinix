@@ -5,6 +5,11 @@
    ================================================================ */
 
 :root {
+    /* Layout */
+    --sidebar-width: 280px;
+    --topbar-height: 70px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
     /* Brand */
     --primary: #2563eb;
     --primary-dark: #1d4ed8;
@@ -128,76 +133,6 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
     line-height: 1.2;
     font-weight: 700;
-}
-
-/* ================================================================
-   BACKGROUND EFFECTS (NEWLY ADDED)
-   ================================================================ */
-.bg-grid {
-    position: fixed;
-    inset: 0;
-    background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    z-index: -5;
-    pointer-events: none;
-}
-
-.bg-noise {
-    position: fixed;
-    inset: 0;
-    background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)" opacity="0.05"/%3E%3C/svg%3E');
-    z-index: -4;
-    pointer-events: none;
-    opacity: 0.4;
-}
-
-.bg-glow {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(120px);
-    z-index: -3;
-    pointer-events: none;
-    opacity: 0.5;
-    animation: float 20s infinite alternate ease-in-out;
-}
-
-.bg-glow-1 {
-    top: -10%;
-    left: -10%;
-    width: 50vw;
-    height: 50vw;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%);
-}
-
-.bg-glow-2 {
-    bottom: -20%;
-    right: -10%;
-    width: 60vw;
-    height: 60vw;
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent 70%);
-    animation-delay: -5s;
-}
-
-.bg-glow-3 {
-    top: 40%;
-    left: 60%;
-    width: 40vw;
-    height: 40vw;
-    background: radial-gradient(circle, rgba(236, 72, 153, 0.1), transparent 70%);
-    animation-delay: -10s;
-}
-
-@keyframes float {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(50px, 50px) scale(1.1); }
-}
-
-/* Remove glow blob backgrounds — they look unprofessional on a light UI */
-.bg-grid, .bg-noise, .bg-particles,
-.bg-glow, .bg-glow-1, .bg-glow-2, .bg-glow-3 {
-    display: none !important;
 }
 
 /* ================================================================
