@@ -322,73 +322,6 @@ h1, h2, h3, h4, h5, h6 {
     flex-shrink: 0;
 }
 
-.sidebar-footer {
-    padding: 0.75rem;
-    border-top: 1px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.user-pill {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.5rem;
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: var(--transition);
-    flex: 1;
-    min-width: 0;
-}
-
-.user-pill:hover {
-    background: var(--bg-main);
-}
-
-.logout-btn-sidebar {
-    background: none;
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    width: 32px;
-    height: 32px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: var(--transition);
-    flex-shrink: 0;
-}
-
-.logout-btn-sidebar:hover {
-    background: #fee2e2;
-    color: #ef4444;
-    border-color: #fecaca;
-}
-
-.user-pill img {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.user-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.user-info span {
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.user-status {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-}
 
 /* ================================================================
    BOTTOM NAVIGATION (Mobile Only)
@@ -997,12 +930,6 @@ h1, h2, h3, h4, h5, h6 {
 .encyclopedia-item h4 { font-size: 1.3rem; margin-bottom: 0.5rem; color: var(--text-primary); }
 .encyclopedia-item p { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 1rem;}
 
-/* ================================================================
-   PROFILE
-   ================================================================ */
-.profile-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-.profile-form, .bookmarks-panel { background: var(--bg-glass); backdrop-filter: blur(12px); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; }
-.profile-form h3, .bookmarks-panel h3 { font-size: 1.4rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 0.5rem;}
 .form-group { margin-bottom: 1.25rem; }
 .form-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem; font-weight: 600; text-transform: uppercase;}
 .form-control { width: 100%; border: 1px solid var(--border-subtle); background: rgba(0, 0, 0, 0.3); color: white; padding: 0.8rem 1rem; border-radius: var(--radius-sm); font-family: inherit; font-size: 1rem; outline: none; transition: var(--transition-base); }
@@ -1033,97 +960,6 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 /* Responsive Adjustments */
 /* Removed duplicate media query */
 
-.bookmark-item { background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; transition: var(--transition-fast); cursor: pointer;}
-.bookmark-item:hover { background: rgba(59, 130, 246, 0.15); transform: translateX(3px); }
-/* Login Modal Styles */
-.login-modal {
-    background: var(--bg-glass);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--border-highlight);
-    border-radius: var(--radius-xl);
-    padding: 3rem 2rem;
-    width: 100%;
-    max-width: 420px;
-    text-align: center;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    animation: modalSlideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes modalSlideUp {
-    from { opacity: 0; transform: translateY(40px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.login-header h2 {
-    font-size: 2rem;
-    margin-bottom: 0.5rem;
-    background: var(--grad-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.login-header p {
-    color: var(--text-secondary);
-    font-size: 1rem;
-    margin-bottom: 2.5rem;
-}
-
-.login-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.login-option {
-    display: flex;
-    justify-content: center;
-}
-
-.divider {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
-.divider::before, .divider::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border-subtle);
-}
-
-.btn-guest {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-subtle);
-    color: white;
-    padding: 0.85rem;
-    border-radius: var(--radius-md);
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    transition: var(--transition-base);
-}
-
-.btn-guest:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-    border-color: var(--border-highlight);
-}
-
-.login-footer {
-    margin-top: 2.5rem;
-    color: var(--text-muted);
-    font-size: 0.75rem;
-    line-height: 1.4;
-}
 
 /* ================================================================
    MODALS
@@ -1989,4 +1825,3 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 .nav-link:active, .b-nav-item:active {
     transform: scale(0.95);
 }
-

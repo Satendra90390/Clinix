@@ -9,7 +9,6 @@ let userLon = null;
 let selectedSymptoms = [];
 let bookmarks = JSON.parse(localStorage.getItem('medguide_bookmarks') || '[]');
 let currentDetailId = null;
-let currentUser = JSON.parse(localStorage.getItem('medguide_user') || 'null');
 let timerInterval = null;
 let timerSeconds = 0;
 let timerRunning = false;
@@ -18,35 +17,30 @@ let currentLanguage = localStorage.getItem('medguide_lang') || 'en';
 
 const translations = {
     en: {
-        home: "Home", symptoms: "Symptoms", drugs: "Drugs", emergency: "Emergency", wikipedia: "Wikipedia", profile: "Profile",
+        home: "Home", symptoms: "Symptoms", drugs: "Drugs", emergency: "Emergency", wikipedia: "Wikipedia",
         guidelines: "Guidelines", categories: "Categories", critical_urgent: "Critical/Urgent", protocols: "Emergency Protocols",
-        search_placeholder: "Search conditions, medicines, symptoms...", showing: "Showing", guidelines_count: "guidelines",
-        welcome: "Welcome to ClinixAI", guest_btn: "Continue as Guest", login_sub: "Your AI-Powered Medical Companion"
+        search_placeholder: "Search conditions, medicines, symptoms...", showing: "Showing", guidelines_count: "guidelines"
     },
     hi: {
-        home: "होम", symptoms: "लक्षण", drugs: "दवाएं", emergency: "आपातकालीन", wikipedia: "विकिपीडिया", profile: "प्रोफ़ाइल",
+        home: "होम", symptoms: "लक्षण", drugs: "दवाएं", emergency: "आपातकालीन", wikipedia: "विकिपीडिया",
         guidelines: "दिशानिर्देश", categories: "श्रेणियाँ", critical_urgent: "गंभीर/तत्काल", protocols: "आपातकालीन प्रोटोकॉल",
-        search_placeholder: "स्थितियों, दवाओं, लक्षणों की खोज करें...", showing: "दिखा रहा है", guidelines_count: "दिशानिर्देश",
-        welcome: "क्लिनिक्स एआई में आपका स्वागत है", guest_btn: "अतिथि के रूप में जारी रखें", login_sub: "आपका एआई-संचालित चिकित्सा साथी"
+        search_placeholder: "स्थितियों, दवाओं, लक्षणों की खोज करें...", showing: "दिखा रहा है", guidelines_count: "दिशानिर्देश"
     },
     es: {
-        home: "Inicio", symptoms: "Síntomas", drugs: "Medicamentos", emergency: "Emergencia", wikipedia: "Wikipedia", profile: "Perfil",
+        home: "Inicio", symptoms: "Síntomas", drugs: "Medicamentos", emergency: "Emergencia", wikipedia: "Wikipedia",
         guidelines: "Pautas", categories: "Categorías", critical_urgent: "Crítico/Urgente", protocols: "Protocolos de Emergencia",
-        search_placeholder: "Buscar condiciones, medicamentos, síntomas...", showing: "Mostrando", guidelines_count: "pautas",
-        welcome: "Bienvenido a ClinixAI", guest_btn: "Continuar como Invitado", login_sub: "Su compañero médico impulsado por IA"
+        search_placeholder: "Buscar condiciones, medicamentos, síntomas...", showing: "Mostrando", guidelines_count: "pautas"
     },
     fr: {
-        home: "Accueil", symptoms: "Symptômes", drugs: "Médicaments", emergency: "Urgence", wikipedia: "Wikipédia", profile: "Profil",
+        home: "Accueil", symptoms: "Symptômes", drugs: "Médicaments", emergency: "Urgence", wikipedia: "Wikipédia",
         guidelines: "Directives", categories: "Catégories", critical_urgent: "Critique/Urgent", protocols: "Protocoles d'Urgence",
-        search_placeholder: "Rechercher des conditions, médicaments, symptômes...", showing: "Affichage de", guidelines_count: "directives",
-        welcome: "Bienvenue sur ClinixAI", guest_btn: "Continuer en tant qu'Invité", login_sub: "Votre compagnon médical propulsé par l'IA"
+        search_placeholder: "Rechercher des conditions, médicaments, symptômes...", showing: "Affichage de", guidelines_count: "directives"
     }
 };
 
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage();
-    checkLoginStatus();
     loadGuidelinesFromPage();
     setupFilters();
     setupSearch();
@@ -54,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     detectLocation();
     buildLetterBar();
     populateEmergencyProtocols();
-    loadUserProfile();
 
     // Register Service Worker (Step 3)
     if ('serviceWorker' in navigator) {
@@ -79,7 +72,7 @@ function applyLanguage() {
     // Update Nav Tabs
     const navMapping = {
         home: t.home, symptoms: t.symptoms, drugs: t.drugs,
-        emergency: t.emergency, encyclopedia: t.wikipedia, profile: t.profile
+        emergency: t.emergency, encyclopedia: t.wikipedia
     };
     
     Object.entries(navMapping).forEach(([page, label]) => {
@@ -119,17 +112,6 @@ function applyLanguage() {
     const showingText = document.querySelector('.results-count');
     if (showingText) {
         showingText.innerHTML = `${t.showing} <strong id="showingCount">${allGuidelines.length}</strong> ${t.guidelines_count}`;
-    }
-
-    // Update Login Modal
-    const loginHeader = document.querySelector('.login-header h2');
-    if (loginHeader) loginHeader.textContent = t.welcome;
-    const loginSub = document.querySelector('.login-header p');
-    if (loginSub) loginSub.textContent = t.login_sub;
-    const guestBtn = document.querySelector('.btn-guest');
-    if (guestBtn) {
-        const icon = guestBtn.querySelector('.btn-icon').outerHTML;
-        guestBtn.innerHTML = `${icon} ${t.guest_btn}`;
     }
 
     // Sync language selector
@@ -346,7 +328,6 @@ function navigateTo(page) {
         // Initial letter bar if needed
         if (document.getElementById('letterBar').children.length <= 1) buildLetterBar();
     }
-    if (page === 'profile') loadUserProfile();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -904,90 +885,6 @@ function buildLetterBar() {
     });
 }
 
-// PROFILE
-function loadUserProfile() {
-    if (!currentUser) return;
-
-    document.getElementById('profileUsername').value = currentUser.username || '';
-    document.getElementById('profileEmail').value = currentUser.email || '';
-    document.getElementById('profileType').value = currentUser.user_type || 'patient';
-    document.getElementById('bloodType').value = currentUser.profile_data?.blood_type || '';
-    document.getElementById('medicalNotes').value = currentUser.profile_data?.allergies || '';
-    updateBookmarksList();
-}
-
-async function saveProfile(e) {
-    e.preventDefault();
-
-    currentUser = {
-        username: document.getElementById('profileUsername').value,
-        email: document.getElementById('profileEmail').value,
-        user_type: document.getElementById('profileType').value,
-        profile_data: {
-            blood_type: document.getElementById('bloodType').value,
-            allergies: document.getElementById('medicalNotes').value
-        }
-    };
-
-    localStorage.setItem('medguide_user', JSON.stringify(currentUser));
-
-    try {
-        await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(currentUser)
-        });
-        alert('Profile saved!');
-    } catch (err) {
-        alert('Saved locally (server not connected)');
-    }
-}
-
-// LOGIN SYSTEM
-function checkLoginStatus() {
-    if (!currentUser) {
-        currentUser = {
-            username: 'Guest User',
-            email: '',
-            user_type: 'guest',
-            profile_data: {}
-        };
-    }
-    updateSidebarUser();
-}
-
-function updateSidebarUser() {
-    if (!currentUser) return;
-    const nameEl = document.getElementById('sidebarUserName');
-    const imgEl = document.getElementById('sidebarUserImg');
-    
-    if (nameEl) nameEl.textContent = currentUser.username || 'User';
-    if (imgEl && currentUser.profile_data?.picture) {
-        imgEl.src = currentUser.profile_data.picture;
-    } else if (imgEl) {
-        const initials = (currentUser.username || 'U').charAt(0).toUpperCase();
-        imgEl.src = `https://ui-avatars.com/api/?name=${initials}&background=random`;
-    }
-}
-
-function logout() {
-    if (confirm('Are you sure you want to log out?')) {
-        localStorage.removeItem('medguide_user');
-        currentUser = null;
-        window.location.href = '/login';
-    }
-}
-
-function parseJwt(token) {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) { return {}; }
-}
 function detectLocation() {
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
@@ -1220,10 +1117,9 @@ document.addEventListener('keypress', (e) => {
 // ================================================================
 async function saveVital(e) {
     e.preventDefault();
-    if (!currentUser) return alert('Please login to save vitals');
 
     const data = {
-        username: currentUser.username || currentUser.email,
+        username: 'guest-user',
         type: document.getElementById('vitalType').value,
         value: document.getElementById('vitalValue').value
     };
@@ -1244,10 +1140,8 @@ async function saveVital(e) {
 }
 
 async function loadVitals() {
-    if (!currentUser) return;
-    const username = currentUser.username || currentUser.email;
     try {
-        const res = await fetch(`/api/vitals?username=${username}`);
+        const res = await fetch('/api/vitals?username=guest-user');
         const result = await res.json();
         renderVitals(result.data);
     } catch (err) {

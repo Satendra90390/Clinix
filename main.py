@@ -327,14 +327,6 @@ def render_index_page(request: Request, db: Session):
         }
     )
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, db: Session = Depends(get_db)):
-    return render_index_page(request, db)
-
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request, db: Session = Depends(get_db)):
-    return render_index_page(request, db)
-
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, db: Session = Depends(get_db)):
     try:

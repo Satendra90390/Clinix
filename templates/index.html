@@ -10,7 +10,6 @@
     <meta name="theme-color" content="#3b82f6">
     <title>ClinixAI | AI-Powered Medical Platform</title>
     <link rel="stylesheet" href="/static/style.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -56,25 +55,7 @@
                     <span class="nav-icon">🌐</span> Wikipedia
                 </button>
             </div>
-            <div class="nav-group">
-                <span class="nav-label">Account</span>
-                <button class="nav-link" data-page="profile" onclick="navigateTo('profile')">
-                    <span class="nav-icon">👤</span> Profile
-                </button>
-            </div>
         </nav>
-        <div class="sidebar-footer">
-            <div class="user-pill" onclick="navigateTo('profile')">
-                <img id="sidebarUserImg" src="https://ui-avatars.com/api/?name=Guest&background=random" alt="User">
-                <div class="user-info">
-                    <span id="sidebarUserName">Guest User</span>
-                    <span class="user-status">Online</span>
-                </div>
-            </div>
-            <button class="logout-btn-sidebar" onclick="logout()" title="Sign Out">
-                <span>&#10162;</span>
-            </button>
-        </div>
     </aside>
 
     <!-- BOTTOM NAV (Mobile) -->
@@ -97,10 +78,6 @@
         <button class="b-nav-item" data-page="chat" onclick="navigateTo('chat')">
             <span class="b-nav-icon">✨</span>
             <span class="b-nav-label">AI Chat</span>
-        </button>
-        <button class="b-nav-item" data-page="profile" onclick="navigateTo('profile')">
-            <span class="b-nav-icon">👤</span>
-            <span class="b-nav-label">Profile</span>
         </button>
     </nav>
 
@@ -510,67 +487,6 @@
             </div>
         </div>
 
-        <!-- ==================== PROFILE PAGE ==================== -->
-        <div id="profilePage" class="page">
-            <div class="page-header">
-                <h2>&#128100; User Profile</h2>
-                <p>Manage your medical profile and preferences</p>
-            </div>
-
-            <div class="profile-layout">
-                <div class="profile-form">
-                    <h3>Create / Update Profile</h3>
-                    <form id="profileForm" onsubmit="saveProfile(event)">
-                        <div class="form-group">
-                            <label>Username *</label>
-                            <input type="text" id="profileUsername" class="form-control" placeholder="Your username"
-                                required>
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="profileEmail" class="form-control" placeholder="your@email.com">
-                        </div>
-                        <div class="form-group">
-                            <label>User Type *</label>
-                            <select id="profileType" class="form-control" required>
-                                <option value="patient">Patient</option>
-                                <option value="medic">Medical Professional</option>
-                                <option value="student">Student</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Blood Type</label>
-                            <select id="bloodType" class="form-control">
-                                <option value="">Select...</option>
-                                <option value="A+">A+</option>
-                                <option value="A-">A-</option>
-                                <option value="B+">B+</option>
-                                <option value="B-">B-</option>
-                                <option value="AB+">AB+</option>
-                                <option value="AB-">AB-</option>
-                                <option value="O+">O+</option>
-                                <option value="O-">O-</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Allergies / Medical Notes</label>
-                            <textarea id="medicalNotes" class="form-control"
-                                placeholder="List any allergies or important medical information..."
-                                rows="3"></textarea>
-                        </div>
-                        <div style="display: flex; gap: 1rem;">
-                            <button type="submit" class="btn-primary">Save Profile</button>
-                            <button type="button" class="btn-secondary" onclick="logout()" style="margin-top: 1rem;">Log Out</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bookmarks-panel">
-                    <h3>Bookmarked Guidelines</h3>
-                    <div id="bookmarksList" class="bookmarks-list"></div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- ==================== MODALS ==================== -->
