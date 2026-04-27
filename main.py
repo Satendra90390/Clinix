@@ -7,21 +7,29 @@ import os
 import re
 import json
 import logging
+import secrets
+import hashlib
+import base64
 import aiohttp
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional, List
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, Request, Depends, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, Request, Depends, BackgroundTasks, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, JSON, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
+from passlib.context import CryptContext
+from jose import JWTError, jwt
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 # Load environment
 load_dotenv()
@@ -68,14 +76,35 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+# Security Configuration
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# Twilio Configuration (for phone auth)
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+
+# Google OAuth Configuration
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+
+# In-memory store for OTP codes (in production, use Redis/database)
+otp_store = {}
+
 # Models
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True)
+    password_hash = Column(String(255))  # Added for email/password auth
+    phone = Column(String(20), unique=True, index=True)  # Added for phone auth
     user_type = Column(String(20), nullable=False)
     profile_data = Column(JSON, default=dict)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class Guideline(Base):
@@ -118,6 +147,47 @@ class DrugCache(Base):
 
 # Database Tables Creation
 Base.metadata.create_all(bind=engine)
+
+# Authentication Helper Functions
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def generate_otp(length=6):
+    return ''.join([str(secrets.randbelow(10)) for _ in range(length)])
+
+async def send_sms_otp(phone: str, otp: str):
+    """Send OTP via Twilio SMS"""
+    if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+        logger.warning("Twilio credentials not configured. OTP logged instead.")
+        logger.info(f"OTP for {phone}: {otp}")
+        return True
+    
+    try:
+        from twilio.rest import Client
+        client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+        message = client.messages.create(
+            body=f"Your ClinixAI verification code is: {otp}. Valid for 5 minutes.",
+            from_=TWILIO_PHONE_NUMBER,
+            to=phone
+        )
+        logger.info(f"SMS sent to {phone}: {message.sid}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send SMS: {e}")
+        return False
 
 # Helper functions
 def safe_json_loads(data):
@@ -254,6 +324,25 @@ def get_db():
     try: yield db
     finally: db.close()
 
+# Get current user from token
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = db.query(User).filter(User.username == username).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
 # Lifespan for Seeding
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -291,6 +380,237 @@ if os.path.exists(STATIC_DIR):
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # --- Routes ---
+
+# Authentication Routes
+@app.post("/api/auth/register")
+async def register_user(
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    user_type: str = Form("patient"),
+    db: Session = Depends(get_db)
+):
+    """Register a new user with email/password"""
+    # Check if user exists
+    existing_user = db.query(User).filter(
+        (User.username == username) | (User.email == email)
+    ).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+    
+    # Create new user
+    hashed_password = get_password_hash(password)
+    new_user = User(
+        username=username,
+        email=email,
+        password_hash=hashed_password,
+        user_type=user_type,
+        profile_data={}
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Generate token
+    access_token = create_access_token(data={"sub": new_user.username})
+    return {
+        "message": "User registered successfully",
+        "user": {
+            "id": new_user.id,
+            "username": new_user.username,
+            "email": new_user.email,
+            "user_type": new_user.user_type
+        },
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@app.post("/api/auth/login")
+async def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """Login with username/email and password"""
+    # Find user by username or email
+    user = db.query(User).filter(
+        (User.username == form_data.username) | (User.email == form_data.username)
+    ).first()
+    
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    if not user.is_active:
+        raise HTTPException(status_code=400, detail="Inactive account")
+    
+    access_token = create_access_token(data={"sub": user.username})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "user_type": user.user_type
+        }
+    }
+
+@app.post("/api/auth/google")
+async def google_auth(request: Request, db: Session = Depends(get_db)):
+    """Authenticate with Google OAuth token"""
+    try:
+        data = await request.json()
+        token = data.get("credential") or data.get("token")
+        
+        if not token:
+            raise HTTPException(status_code=400, detail="No token provided")
+        
+        if not GOOGLE_CLIENT_ID:
+            logger.warning("GOOGLE_CLIENT_ID not configured")
+            raise HTTPException(status_code=500, detail="Google OAuth not configured")
+        
+        # Verify Google token
+        idinfo = id_token.verify_oauth2_token(
+            token,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID
+        )
+        
+        email = idinfo.get("email")
+        name = idinfo.get("name")
+        google_id = idinfo.get("sub")
+        
+        # Find or create user
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            # Create new user
+            username = email.split("@")[0]
+            base_username = username
+            counter = 1
+            while db.query(User).filter(User.username == username).first():
+                username = f"{base_username}{counter}"
+                counter += 1
+            
+            user = User(
+                username=username,
+                email=email,
+                user_type="patient",
+                profile_data={"google_id": google_id, "name": name},
+                password_hash=None  # No password for Google auth
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        
+        access_token = create_access_token(data={"sub": user.username})
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "user_type": user.user_type
+            }
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        logger.error(f"Google auth error: {e}")
+        raise HTTPException(status_code=500, detail="Authentication failed")
+
+@app.post("/api/auth/phone/request-otp")
+async def request_phone_otp(request: Request, db: Session = Depends(get_db)):
+    """Request OTP for phone authentication"""
+    data = await request.json()
+    phone = data.get("phone")
+    
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number required")
+    
+    # Generate OTP
+    otp = generate_otp()
+    
+    # Store OTP with expiration (5 minutes)
+    otp_store[phone] = {
+        "otp": otp,
+        "expires": datetime.utcnow() + timedelta(minutes=5)
+    }
+    
+    # Send SMS
+    success = await send_sms_otp(phone, otp)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to send OTP")
+    
+    return {"message": "OTP sent successfully"}
+
+@app.post("/api/auth/phone/verify-otp")
+async def verify_phone_otp(request: Request, db: Session = Depends(get_db)):
+    """Verify OTP and login/register with phone"""
+    data = await request.json()
+    phone = data.get("phone")
+    otp = data.get("otp")
+    
+    if not phone or not otp:
+        raise HTTPException(status_code=400, detail="Phone and OTP required")
+    
+    # Check OTP
+    if phone not in otp_store:
+        raise HTTPException(status_code=400, detail="No OTP requested for this phone")
+    
+    stored = otp_store[phone]
+    if datetime.utcnow() > stored["expires"]:
+        del otp_store[phone]
+        raise HTTPException(status_code=400, detail="OTP expired")
+    
+    if stored["otp"] != otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # OTP is valid, find or create user
+    user = db.query(User).filter(User.phone == phone).first()
+    if not user:
+        # Create new user
+        username = f"user_{phone.replace('+', '').replace('-', '')}"
+        user = User(
+            username=username,
+            phone=phone,
+            user_type="patient",
+            profile_data={}
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    
+    # Clear OTP
+    del otp_store[phone]
+    
+    access_token = create_access_token(data={"sub": user.username})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "phone": user.phone,
+            "user_type": user.user_type
+        }
+    }
+
+@app.get("/api/auth/me")
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current authenticated user info"""
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "phone": current_user.phone,
+        "user_type": current_user.user_type,
+        "profile_data": current_user.profile_data,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+    }
 
 def render_index_page(request: Request, db: Session):
     guidelines = db.query(Guideline).order_by(Guideline.id).all()
