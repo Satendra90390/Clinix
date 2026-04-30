@@ -38,6 +38,204 @@ const translations = {
     }
 };
 
+// ================================================================
+// AUTHENTICATION SYSTEM
+// ================================================================
+const { AUTH_PROVIDER, SUPABASE_CONFIG, FIREBASE_CONFIG } = window.AUTH_CONFIG;
+let supabase = null;
+let firebaseAuth = null;
+
+// Initialize Provider
+if (AUTH_PROVIDER === 'supabase') {
+    supabase = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+    
+    // Listen for Auth Changes
+    supabase.auth.onAuthStateChange((event, session) => {
+        handleAuthStateChange(session?.user || null);
+    });
+} else {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    firebaseAuth = firebase.auth();
+    
+    // Listen for Auth Changes
+    firebaseAuth.onAuthStateChanged(user => {
+        handleAuthStateChange(user);
+    });
+}
+
+function handleAuthStateChange(user) {
+    const authOverlay = document.getElementById('authOverlay');
+    const mainApp = document.getElementById('mainApp');
+    
+    if (user) {
+        if (authOverlay) authOverlay.style.display = 'none';
+        if (mainApp) mainApp.style.display = 'block';
+        updateUserUI(user);
+        saveUserToBackend(user);
+    } else {
+        if (authOverlay) authOverlay.style.display = 'flex';
+        if (mainApp) mainApp.style.display = 'none';
+    }
+}
+
+// Sign-In Methods
+async function signInWithGoogle() {
+    if (AUTH_PROVIDER === 'supabase') {
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+            });
+            if (error) throw error;
+        } catch (error) {
+            console.error("Supabase Auth Error:", error);
+            alert("Sign-in failed: " + error.message);
+        }
+    } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        try {
+            await firebaseAuth.signInWithPopup(provider);
+        } catch (error) {
+            console.error("Firebase Auth Error:", error);
+            alert("Sign-in failed: " + error.message);
+        }
+    }
+}
+
+function showPhoneInput() {
+    document.getElementById('phoneInput').classList.toggle('hidden');
+    if (AUTH_PROVIDER === 'firebase' && !window.recaptchaVerifier) {
+        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            'size': 'invisible'
+        });
+    }
+}
+
+let confirmationResult;
+async function sendOTP() {
+    const phoneNumber = document.getElementById('phoneNumber').value;
+    if (!phoneNumber) return alert("Please enter a valid phone number");
+
+    if (AUTH_PROVIDER === 'supabase') {
+        try {
+            const { error } = await supabase.auth.signInWithOtp({ phone: phoneNumber });
+            if (error) throw error;
+            document.getElementById('otpSection').classList.remove('hidden');
+            alert("OTP sent to your phone.");
+        } catch (error) {
+            alert("Failed to send OTP: " + error.message);
+        }
+    } else {
+        try {
+            confirmationResult = await firebaseAuth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier);
+            document.getElementById('otpSection').classList.remove('hidden');
+        } catch (error) {
+            alert("Failed to send SMS: " + error.message);
+        }
+    }
+}
+
+async function verifyOTP() {
+    const code = document.getElementById('otpCode').value;
+    if (AUTH_PROVIDER === 'supabase') {
+        const phoneNumber = document.getElementById('phoneNumber').value;
+        try {
+            const { error } = await supabase.auth.verifyOtp({ phone: phoneNumber, token: code, type: 'sms' });
+            if (error) throw error;
+        } catch (error) {
+            alert("Invalid verification code");
+        }
+    } else {
+        try {
+            await confirmationResult.confirm(code);
+        } catch (error) {
+            alert("Invalid verification code");
+        }
+    }
+}
+
+function showEmailInput() {
+    document.getElementById('emailInput').classList.toggle('hidden');
+}
+
+async function sendMagicLink() {
+    const email = document.getElementById('emailAddress').value;
+    if (!email) return alert("Please enter your email");
+
+    if (AUTH_PROVIDER === 'supabase') {
+        try {
+            const { error } = await supabase.auth.signInWithOtp({ email: email });
+            if (error) throw error;
+            alert("Check your email for the login link!");
+        } catch (error) {
+            alert(error.message);
+        }
+    } else {
+        const settings = { url: window.location.href, handleCodeInApp: true };
+        try {
+            await firebaseAuth.sendSignInLinkToEmail(email, settings);
+            localStorage.setItem('emailForSignIn', email);
+            alert("Sign-in link sent! Check your inbox.");
+        } catch (error) {
+            alert(error.message);
+        }
+    }
+}
+
+function signOut() {
+    if (AUTH_PROVIDER === 'supabase') {
+        supabase.auth.signOut();
+    } else {
+        firebaseAuth.signOut();
+    }
+}
+
+// Handle Firebase Magic Link Redirect
+if (AUTH_PROVIDER === 'firebase' && firebase.auth().isSignInWithEmailLink(window.location.href)) {
+    let email = localStorage.getItem('emailForSignIn');
+    if (!email) email = window.prompt('Please provide your email for confirmation');
+    firebase.auth().signInWithEmailLink(email, window.location.href)
+        .then(() => localStorage.removeItem('emailForSignIn'))
+        .catch(err => console.error("Email link error", err));
+}
+
+function updateUserUI(user) {
+    const name = user.user_metadata?.full_name || user.displayName || user.email || user.phone || 'User';
+    const photo = user.user_metadata?.avatar_url || user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff`;
+    
+    const sidebarName = document.getElementById('sidebarUserName');
+    const headerName = document.getElementById('headerUserName');
+    const sidebarAvatar = document.getElementById('sidebarAvatar');
+    const headerAvatar = document.getElementById('headerAvatar');
+
+    if (sidebarName) sidebarName.textContent = name;
+    if (headerName) headerName.textContent = name;
+    if (sidebarAvatar) sidebarAvatar.src = photo;
+    if (headerAvatar) headerAvatar.src = photo;
+}
+
+async function saveUserToBackend(user) {
+    const userData = {
+        username: user.id || user.uid,
+        email: user.email,
+        user_type: "patient",
+        profile_data: { 
+            displayName: user.user_metadata?.full_name || user.displayName, 
+            photoURL: user.user_metadata?.avatar_url || user.photoURL 
+        }
+    };
+    try {
+        await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData)
+        });
+    } catch (err) {
+        console.error("Backend sync failed", err);
+    }
+}
+
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage();

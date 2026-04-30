@@ -9,12 +9,13 @@ import json
 import logging
 import aiohttp
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, Request, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -22,6 +23,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, DateTime, J
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
+from jose import jwt, JWTError
 
 # Load environment
 load_dotenv()
@@ -65,6 +67,8 @@ if DATABASE_URL:
 else:
     engine = create_engine("sqlite:///medguide.db", connect_args={"check_same_thread": False})
 
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET")
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -76,7 +80,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True)
     user_type = Column(String(20), nullable=False)
     profile_data = Column(JSON, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class Guideline(Base):
     __tablename__ = "guidelines"
@@ -88,8 +92,8 @@ class Guideline(Base):
     severity = Column(String(20), default="mild")
     steps = Column(JSON, default=list)
     video_url = Column(String(500))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 class EmergencyProtocol(Base):
     __tablename__ = "emergency_protocols"
@@ -99,7 +103,7 @@ class EmergencyProtocol(Base):
     duration_minutes = Column(Integer, default=0)
     steps = Column(JSON, nullable=False)
     audio_enabled = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class VitalRecord(Base):
     __tablename__ = "vitals"
@@ -107,14 +111,21 @@ class VitalRecord(Base):
     username = Column(String(50), index=True)
     type = Column(String(50)) # 'heart_rate', 'blood_pressure', 'glucose', 'weight'
     value = Column(String(50))
-    recorded_at = Column(DateTime, default=datetime.utcnow)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DrugCache(Base):
     __tablename__ = "drug_cache"
     id = Column(Integer, primary_key=True, index=True)
     drug_name = Column(String(200), nullable=False, index=True)
     data = Column(JSON, nullable=False)
-    cached_at = Column(DateTime, default=datetime.utcnow)
+    cached_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+# Pydantic Schemas for Validation
+class GuidelineCreate(BaseModel):
+    title: str = Field(..., min_length=2, max_length=200)
+    summary: str = Field(..., min_length=10)
+    category: str = "First Aid"
+    severity: Optional[str] = "mild"
 
 # Database Tables Creation
 Base.metadata.create_all(bind=engine)
@@ -251,8 +262,29 @@ async def fetch_drug_from_fda(drug_name: str):
 # Dependency
 def get_db():
     db = SessionLocal()
-    try: yield db
-    finally: db.close()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_current_user(request: Request):
+    """
+    Optional dependency to get the current authenticated user from Supabase JWT.
+    """
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    
+    token = auth_header.split(" ")[1]
+    if not SUPABASE_JWT_SECRET:
+        return None
+        
+    try:
+        # Supabase tokens are signed with the project's JWT secret
+        payload = jwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+        return payload
+    except JWTError:
+        return None
 
 # Lifespan for Seeding
 @asynccontextmanager
@@ -355,7 +387,7 @@ async def health(db: Session = Depends(get_db)):
     return {
         "status": "healthy",
         "guidelines": db.query(Guideline).count(),
-        "time": datetime.utcnow().isoformat()
+        "time": datetime.now(timezone.utc).isoformat()
     }
 
 # --- APIs ---
@@ -384,7 +416,7 @@ async def get_guidelines_api(category: str = None, db: Session = Depends(get_db)
 @app.get("/api/drugs/search")
 async def search_drugs(q: str = Query(..., min_length=2), db: Session = Depends(get_db)):
     cached = db.query(DrugCache).filter(DrugCache.drug_name.ilike(f"%{q}%")).first()
-    if cached and cached.cached_at > datetime.utcnow() - timedelta(hours=24):
+    if cached and cached.cached_at > datetime.now(timezone.utc) - timedelta(hours=24):
         return {"source": "cache", "data": safe_json_loads(cached.data)}
     
     fda_data = await fetch_drug_from_fda(q)
@@ -447,13 +479,13 @@ async def get_protocols_api(db: Session = Depends(get_db)):
     return db.query(EmergencyProtocol).all()
 
 @app.post("/api/guidelines")
-async def create_guideline(g: dict, db: Session = Depends(get_db)):
-    meds, sev, stps = enrich_guideline(g["title"], g.get("summary", ""))
+async def create_guideline(g: GuidelineCreate, db: Session = Depends(get_db)):
+    meds, sev, stps = enrich_guideline(g.title, g.summary)
     normalized = normalize_guideline_record({
-        "title": g["title"],
-        "summary": g.get("summary", ""),
-        "category": g.get("category", "First Aid"),
-        "severity": sev,
+        "title": g.title,
+        "summary": g.summary,
+        "category": g.category,
+        "severity": g.severity or sev,
         "medicines": meds,
         "steps": stps
     })

@@ -1,685 +1,422 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="ClinixAI — AI-powered clinical medical information platform. Symptom checker, drug database, emergency protocols, and disease encyclopedia.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="ClinixAI — AI-powered medical guideline platform. Get instant first-aid and health guidelines through intelligent chat.">
     <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#3b82f6">
-    <title>ClinixAI | AI-Powered Medical Platform</title>
+    <meta name="theme-color" content="#2563eb">
+    <title>ClinixAI | Medical Guidelines Assistant</title>
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Auth SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        import { AUTH_PROVIDER, SUPABASE_CONFIG, FIREBASE_CONFIG } from '/static/config.js';
+        window.AUTH_CONFIG = { AUTH_PROVIDER, SUPABASE_CONFIG, FIREBASE_CONFIG };
+    </script>
 </head>
-
 <body>
-    <!-- Background Effects Removed for Professional Look -->
-
-    <!-- SIDEBAR (Desktop) -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <a href="/" class="logo">
-                <div class="logo-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
-                    </svg>
+    <!-- Authentication Overlay -->
+    <div id="authOverlay" style="display: flex;">
+        <div class="auth-container">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <div class="logo-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <h1>ClinixAI</h1>
+                    <p>Your AI-Powered Health Guide</p>
                 </div>
-                <h1>ClinixAI</h1>
-            </a>
+
+                <div class="auth-methods">
+                    <!-- Google Sign-In -->
+                    <button class="auth-btn google-btn" onclick="signInWithGoogle()">
+                        <svg width="20" height="20" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+
+                    <div class="divider"><span>or</span></div>
+
+                    <!-- Phone Sign-In -->
+                    <div class="phone-auth">
+                        <button class="auth-btn phone-btn" onclick="showPhoneInput()">
+                            <span>📱</span> Continue with Phone
+                        </button>
+                        <div id="phoneInput" class="phone-input-group hidden">
+                            <input type="tel" id="phoneNumber" placeholder="+1 (555) 000-0000" class="auth-input">
+                            <div id="recaptcha-container"></div>
+                            <button class="auth-btn send-otp-btn" onclick="sendOTP()">Send Code</button>
+                            <div id="otpSection" class="hidden">
+                                <input type="text" id="otpCode" placeholder="Enter 6-digit code" class="auth-input" maxlength="6">
+                                <button class="auth-btn verify-btn" onclick="verifyOTP()">Verify</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="divider"><span>or</span></div>
+
+                    <!-- Email Sign-In -->
+                    <div class="email-auth">
+                        <button class="auth-btn email-btn" onclick="showEmailInput()">
+                            <span>✉️</span> Continue with Email
+                        </button>
+                        <div id="emailInput" class="email-input-group hidden">
+                            <input type="email" id="emailAddress" placeholder="you@example.com" class="auth-input">
+                            <button class="auth-btn send-link-btn" onclick="sendMagicLink()">Send Magic Link</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="auth-footer">
+                    <p class="disclaimer">By continuing, you agree to our Terms of Service</p>
+                    <p class="medical-disclaimer">⚠️ For educational purposes only. Not medical advice.</p>
+                </div>
+            </div>
         </div>
-        <nav class="sidebar-nav">
-            <div class="nav-group">
-                <span class="nav-label">Main Menu</span>
-                <button class="nav-link active" data-page="home" onclick="navigateTo('home')">
-                    <span class="nav-icon">🏠</span> Home
-                </button>
-                <button class="nav-link" data-page="symptoms" onclick="navigateTo('symptoms')">
-                    <span class="nav-icon">🩺</span> Symptoms
-                </button>
-                <button class="nav-link" data-page="drugs" onclick="navigateTo('drugs')">
-                    <span class="nav-icon">💊</span> Drug Database
-                </button>
-                <button class="nav-link" data-page="chat" onclick="navigateTo('chat')">
-                    <span class="nav-icon">✨</span> ClinixAI Chat
-                </button>
-                <button class="nav-link" data-page="vitals" onclick="navigateTo('vitals')">
-                    <span class="nav-icon">📊</span> Health Tracker
-                </button>
-            </div>
-            <div class="nav-group">
-                <span class="nav-label">Tools & Resources</span>
-                <button class="nav-link" data-page="emergency" onclick="navigateTo('emergency')">
-                    <span class="nav-icon">🚨</span> Emergency
-                </button>
-                <button class="nav-link" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
-                    <span class="nav-icon">🌐</span> Wikipedia
-                </button>
-            </div>
-        </nav>
-    </aside>
+    </div>
 
-    <!-- BOTTOM NAV (Mobile) -->
-    <nav class="bottom-nav">
-        <button class="b-nav-item active" data-page="home" onclick="navigateTo('home')">
-            <span class="b-nav-icon">🏠</span>
-            <span class="b-nav-label">Home</span>
-        </button>
-        <button class="b-nav-item" data-page="symptoms" onclick="navigateTo('symptoms')">
-            <span class="b-nav-icon">🩺</span>
-            <span class="b-nav-label">Symptoms</span>
-        </button>
-        <button class="b-nav-item" data-page="emergency" onclick="navigateTo('emergency')">
-            <div class="b-nav-fab">🚨</div>
-        </button>
-        <button class="b-nav-item" data-page="drugs" onclick="navigateTo('drugs')">
-            <span class="b-nav-icon">💊</span>
-            <span class="b-nav-label">Drugs</span>
-        </button>
-        <button class="b-nav-item" data-page="chat" onclick="navigateTo('chat')">
-            <span class="b-nav-icon">✨</span>
-            <span class="b-nav-label">AI Chat</span>
-        </button>
-    </nav>
-
-    <!-- HEADER (Top Bar) -->
-    <header class="top-header">
-        <div class="header-content">
-            <div class="mobile-logo-wrapper">
+    <!-- Main App (Hidden until authenticated) -->
+    <div id="mainApp" style="display: none;">
+        <!-- SIDEBAR (Desktop) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
                 <a href="/" class="logo">
                     <div class="logo-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round"/>
                         </svg>
                     </div>
                     <h1>ClinixAI</h1>
                 </a>
             </div>
-            <div class="header-search">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="globalSearch" placeholder="Search anything...">
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-label">Main Menu</span>
+                    <button class="nav-link active" data-page="home" onclick="navigateTo('home')">
+                        <span class="nav-icon">🏠</span> Home
+                    </button>
+                    <button class="nav-link" data-page="chat" onclick="navigateTo('chat')">
+                        <span class="nav-icon">💬</span> AI Guide Chat
+                    </button>
+                    <button class="nav-link" data-page="emergency" onclick="navigateTo('emergency')">
+                        <span class="nav-icon">🚨</span> Emergency
+                    </button>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-label">Tools</span>
+                    <button class="nav-link" data-page="symptoms" onclick="navigateTo('symptoms')">
+                        <span class="nav-icon">🩺</span> Symptom Checker
+                    </button>
+                    <button class="nav-link" data-page="drugs" onclick="navigateTo('drugs')">
+                        <span class="nav-icon">💊</span> Drug Database
+                    </button>
+                    <button class="nav-link" data-page="encyclopedia" onclick="navigateTo('encyclopedia')">
+                        <span class="nav-icon">🌐</span> Wikipedia Search
+                    </button>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile-mini">
+                    <img id="sidebarAvatar" src="" alt="User" class="user-avatar-small">
+                    <span id="sidebarUserName">User</span>
+                </div>
+                <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
             </div>
-            <div class="header-right">
-                <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme" style="margin-right: 1rem;">
-                    <span id="themeIcon">🌙</span>
-                </button>
-                <select id="languageSelect" class="lang-selector-modern" onchange="changeLanguage(this.value)">
-                    <option value="en">🇺🇸 EN</option>
-                    <option value="hi">🇮🇳 HI</option>
-                    <option value="es">🇪🇸 ES</option>
-                    <option value="fr">🇫🇷 FR</option>
-                </select>
-                <button class="btn-emergency-pill" onclick="navigateTo('emergency')">
-                    <span>🚨</span> EMERGENCY
-                </button>
-            </div>
-        </div>
-    </header>
+        </aside>
 
-    <main class="content-wrapper">
-        <!-- ==================== HOME PAGE ==================== -->
-        <div id="homePage" class="page active">
-            <div class="hero-stats" id="heroStats">
-                <div class="stat-card">
-                    <div class="stat-num" id="totalCount">0</div>
-                    <div class="stat-label">Guidelines</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-num" id="categoryCount">0</div>
-                    <div class="stat-label">Categories</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-num" id="criticalCount">0</div>
-                    <div class="stat-label">Critical/Urgent</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-num" id="protocolCount">0</div>
-                    <div class="stat-label">Emergency Protocols</div>
-                </div>
-            </div>
+        <!-- BOTTOM NAV (Mobile) -->
+        <nav class="bottom-nav">
+            <button class="b-nav-item active" data-page="home" onclick="navigateTo('home')">
+                <span class="b-nav-icon">🏠</span>
+                <span class="b-nav-label">Home</span>
+            </button>
+            <button class="b-nav-item" data-page="chat" onclick="navigateTo('chat')">
+                <span class="b-nav-icon">💬</span>
+                <span class="b-nav-label">Chat</span>
+            </button>
+            <button class="b-nav-item" data-page="emergency" onclick="navigateTo('emergency')">
+                <div class="b-nav-fab">🚨</div>
+            </button>
+            <button class="b-nav-item" data-page="symptoms" onclick="navigateTo('symptoms')">
+                <span class="b-nav-icon">🩺</span>
+                <span class="b-nav-label">Check</span>
+            </button>
+            <button class="b-nav-item" data-page="drugs" onclick="navigateTo('drugs')">
+                <span class="b-nav-icon">💊</span>
+                <span class="b-nav-label">Drugs</span>
+            </button>
+        </nav>
 
-            <div class="toolbar">
-                <div class="search-bar-full">
-                    <span class="search-icon">&#128269;</span>
-                    <input type="text" id="searchInput" class="search-input"
-                        placeholder="Search conditions, medicines, symptoms...">
-                </div>
-                <div class="filters-row">
-                    <div class="filters-bar" id="filtersBar">
-                        <button class="filter-pill active" data-category="">All</button>
-                    </div>
-                    <div class="severity-filters" id="severityFilters">
-                        <button class="filter-pill sev-filter" data-severity="">All Severities</button>
-                        <button class="filter-pill sev-filter sev-mild" data-severity="mild">Mild</button>
-                        <button class="filter-pill sev-filter sev-moderate" data-severity="moderate">Moderate</button>
-                        <button class="filter-pill sev-filter sev-urgent" data-severity="urgent">Urgent</button>
-                        <button class="filter-pill sev-filter sev-critical" data-severity="critical">Critical</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Categories Ribbon -->
-            <div class="category-ribbon">
-                <button class="cat-pill active" onclick="filterByCategory('')">All Guidelines</button>
-                <button class="cat-pill" onclick="filterByCategory('First Aid')">🩹 First Aid</button>
-                <button class="cat-pill" onclick="filterByCategory('Emergency')">🚨 Emergency</button>
-                <button class="cat-pill" onclick="filterByCategory('Mental Health')">🧠 Mental Health</button>
-                <button class="cat-pill" onclick="filterByCategory('Nutrition')">🥗 Nutrition</button>
-            </div>
-
-            <!-- Emergency & Urgent Care Section -->
-            <div class="emergency-urgent-section">
-                <div class="urgent-card" onclick="navigateTo('emergency')">
-                    <div class="urgent-icon">🆘</div>
-                    <div class="urgent-info">
-                        <h3>Emergency Protocols</h3>
-                        <p>Immediate steps for life-threatening situations.</p>
-                    </div>
-                    <span class="urgent-arrow">→</span>
-                </div>
-                <div class="urgent-card warning" onclick="navigateTo('symptoms')">
-                    <div class="urgent-icon">⚠️</div>
-                    <div class="urgent-info">
-                        <h3>Critical Triage</h3>
-                        <p>Analyze urgent symptoms and get guidance.</p>
-                    </div>
-                    <span class="urgent-arrow">→</span>
-                </div>
-            </div>
-
-            <div class="section-header">
-                <h3>Clinical Guidelines</h3>
-                <div class="header-filters">
-                    <span class="results-count">Showing <strong id="showingCount">{{ guidelines|length }}</strong> guidelines</span>
-                </div>
-            </div>
-
-            <div class="guidelines-grid" id="guidelinesGrid">
-                {% for g in guidelines %}
-                <article class="card" data-id="{{ g.id }}" data-category="{{ g.category }}" data-title="{{ g.title }}"
-                    data-summary="{{ g.summary }}" data-severity="{{ g.get('severity', 'mild') }}"
-                    data-medicines='{{ g.get("medicines", []) | tojson }}'
-                    data-steps='{{ g.get("steps", []) | tojson }}'>
-                    <div class="card-top">
-                        <div class="card-badges">
-                            <span class="badge-category">{{ g.category }}</span>
-                            <span class="badge-severity sev-{{ g.get('severity', 'mild') }}">{{ g.get('severity',
-                                'mild') | upper }}</span>
+        <!-- TOP HEADER -->
+        <header class="top-header">
+            <div class="header-content">
+                <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+                <div class="mobile-logo-wrapper">
+                    <a href="/" class="logo">
+                        <div class="logo-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
                         </div>
-                        <div class="card-actions">
-                            <button class="icon-btn" onclick="event.stopPropagation(); bookmarkItem({{ g.id }})"
-                                title="Bookmark">&#9734;</button>
-                            <button class="icon-btn" onclick="event.stopPropagation(); openEditModal({{ g.id }})"
-                                title="Edit">&#9998;</button>
-                            <button class="icon-btn delete"
-                                onclick="event.stopPropagation(); deleteGuideline({{ g.id }})"
-                                title="Delete">&#10005;</button>
-                        </div>
-                    </div>
-                    <h2 class="card-title">{{ g.title }}</h2>
-                    <p class="card-summary">{{ g.summary }}</p>
-                    {% if g.get('steps') %}
-                    <div class="steps-preview">
-                        {% for step in g.get('steps', [])[:2] %}
-                        <div class="step-chip"><span>{{ loop.index }}</span> {{ step[:50] }}{% if step|length > 50
-                            %}...{% endif %}</div>
-                        {% endfor %}
-                        {% if g.get('steps') | length > 2 %}
-                        <div class="step-chip">+{{ g.get('steps') | length - 2 }} more steps</div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    <div class="card-footer">
-                        <div class="medicines-preview">
-                            {% for med in g.get('medicines', [])[:3] %}
-                            <span class="med-chip">{{ med }}</span>
-                            {% endfor %}
-                            {% if g.get('medicines', []) | length > 3 %}
-                            <span class="med-chip">+{{ g.get('medicines', []) | length - 3 }} more</span>
-                            {% endif %}
-                        </div>
-                        <span class="view-details-btn">View &#8594;</span>
-                    </div>
-                </article>
-                {% endfor %}
-            </div>
-
-            <div class="empty-state" id="emptyState" style="display: none;">
-                <div class="empty-icon">&#128230;</div>
-                <h3>No guidelines found</h3>
-                <p>Try adjusting your search or filters</p>
-            </div>
-
-            <button class="fab" onclick="openAddModal()" title="Add Guideline">+</button>
-        </div>
-
-        <!-- ==================== SYMPTOM CHECKER PAGE ==================== -->
-        <div id="symptomsPage" class="page">
-            <div class="page-header">
-                <h2>&#129757; Symptom Checker & Triage</h2>
-                <p>Select your symptoms to get possible conditions and recommended actions</p>
-            </div>
-
-            <div class="symptom-checker-layout">
-                <div class="symptom-panel">
-                    <h3>Select Symptoms</h3>
-                    <div class="symptom-tags" id="selectedSymptomTags"></div>
-                    <div class="symptom-grid">
-                        <button class="symptom-btn" onclick="toggleSymptom('fever')">Fever</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('headache')">Headache</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('chest pain')">Chest Pain</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('difficulty breathing')">Breathing
-                            Difficulty</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('bleeding')">Bleeding</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('confusion')">Confusion</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('cough')">Cough</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('rash')">Rash</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('vomiting')">Vomiting</button>
-                        <button class="symptom-btn" onclick="toggleSymptom('dizziness')">Dizziness</button>
-                    </div>
-                    <button class="btn-primary" onclick="checkSymptoms()">Check Symptoms</button>
+                        <h1>ClinixAI</h1>
+                    </a>
                 </div>
-
-                <div class="triage-panel" id="triagePanel" style="display: none;">
-                    <h3>Results & Recommended Action</h3>
-                    <div class="triage-alert" id="triageAlert"></div>
-                    <div class="condition-results" id="conditionResults"></div>
+                <div class="header-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="globalSearch" placeholder="Search guidelines...">
+                </div>
+                <div class="header-right">
+                    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                    <select id="languageSelect" class="lang-selector-modern" onchange="changeLanguage(this.value)">
+                        <option value="en">🇺🇸 EN</option>
+                        <option value="hi">🇮🇳 HI</option>
+                        <option value="es">🇪🇸 ES</option>
+                        <option value="fr">🇫🇷 FR</option>
+                    </select>
+                    <div class="user-profile">
+                        <img id="headerAvatar" src="" alt="User" class="user-avatar">
+                        <span id="headerUserName" class="user-name">User</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <!-- ===================== DRUG DATABASE PAGE ==================== -->
-        <div id="drugsPage" class="page">
-            <div class="page-header">
-                <h2>&#128138; Drug Database (FDA Data)</h2>
-                <p>Search medicines for dosage, side effects, and interactions</p>
-            </div>
-
-            <div class="drug-search">
-                <div class="search-bar-full">
-                    <span class="search-icon">&#128269;</span>
-                    <input type="text" id="drugSearchInput" class="search-input"
-                        placeholder="Search drug name (e.g., Tylenol, Ibuprofen)...">
-                    <button class="btn-primary" onclick="searchDrug()"
-                        style="width: auto; padding: 0 1.5rem;">Search</button>
+        <!-- MAIN CONTENT -->
+        <main class="content-wrapper">
+            <!-- Home Page - Simplified with Focus on Chat -->
+            <div id="homePage" class="page active">
+                <div class="welcome-section">
+                    <h2>How can I help you today?</h2>
+                    <p>Describe your symptoms or ask for a specific health guideline</p>
                 </div>
-            </div>
-
-            <div class="drug-results" id="drugResults" style="display: none;"></div>
-
-            <div class="drug-interaction-checker" style="margin-top: 2rem;">
-                <h3>&#9888; Drug Interaction Checker</h3>
-                <div class="interaction-inputs" id="interactionInputs">
-                    <input type="text" class="form-control drug-input" placeholder="Drug 1 (e.g., Aspirin)">
-                    <input type="text" class="form-control drug-input" placeholder="Drug 2 (e.g., Warfarin)">
-                </div>
-                <div style="display: flex; gap: 0.75rem; margin-top: 0.75rem;">
-                    <button class="btn-primary" onclick="checkInteractions()" style="flex: 1;">Check
-                        Interactions</button>
-                    <button class="btn-secondary" onclick="addDrugInput()">+ Add Drug</button>
-                </div>
-                <div class="interaction-results" id="interactionResults" style="display: none; margin-top: 1rem;"></div>
-            </div>
-        </div>
-
-        <!-- ==================== AI CHAT PAGE ==================== -->
-        <div id="chatPage" class="page">
-            <div class="chat-layout">
-                <aside class="chat-sidebar">
-                    <div class="chat-new">
-                        <button class="btn-new-chat" onclick="resetChat()">
-                            <span>+</span> New Conversation
-                        </button>
-                    </div>
-                    <div class="chat-history">
-                        <span class="history-label">Recent Queries</span>
-                        <div id="chatHistoryList" class="history-list">
-                            <!-- Populated by JS -->
+                
+                <div class="chat-layout home-chat">
+                    <div class="chat-main">
+                        <div class="chat-messages" id="homeChatMessages">
+                            <div class="message ai">
+                                <div class="message-avatar">✨</div>
+                                <div class="message-content">
+                                    <p>Hello! I'm your <strong>ClinixAI</strong> assistant. I can help you find the right medical guidelines.</p>
+                                    <p>Try asking about:</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="chat-disclaimer">
-                        <span class="warning-icon">⚠️</span>
-                        <p>AI is for informational purposes only and is not a substitute for professional medical advice.</p>
-                    </div>
-                </aside>
-
-                <div class="chat-main">
-                    <div class="chat-header">
-                        <div class="ai-status">
-                            <div class="status-dot"></div>
-                            <span>ClinixAI v2.0 Online</span>
-                        </div>
-                        <div class="chat-actions">
-                            <button class="chat-action-btn" title="Clear Chat" onclick="resetChat()">🗑️</button>
-                            <button class="chat-action-btn" title="Export Chat">📤</button>
-                        </div>
-                    </div>
-
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="message ai">
-                            <div class="message-avatar">✨</div>
-                            <div class="message-content">
-                                <p>Hello! I am your <strong>ClinixAI</strong> assistant. I can help you understand symptoms, provide first aid guidance, or explain medical terms.</p>
-                                <p>What's on your mind today?</p>
+                        <div class="chat-bottom">
+                            <div class="quick-suggestions">
+                                <button onclick="setChatInput('How to treat a fever?')">🤒 Fever Treatment</button>
+                                <button onclick="setChatInput('First aid for cuts and wounds')">🩹 Cuts & Wounds</button>
+                                <button onclick="setChatInput('What to do for a sprain?')">🦶 Sprain Care</button>
+                                <button onclick="setChatInput('CPR steps for adults')">❤️ CPR Guide</button>
+                                <button onclick="setChatInput('Headache relief methods')">🤕 Headache Relief</button>
+                            </div>
+                            <div class="chat-input-area">
+                                <div class="input-wrapper">
+                                    <textarea id="homeChatInput" placeholder="Ask for a medical guideline..." rows="1" oninput="autoResize(this)"></textarea>
+                                    <div class="input-actions">
+                                        <button class="btn-send" onclick="sendHomeMessage()">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="chat-bottom">
-                        <div class="quick-suggestions" id="quickSuggestions">
-                            <button onclick="setChatInput('What are the symptoms of common cold?')">🤧 Common Cold</button>
-                            <button onclick="setChatInput('How to treat a minor burn at home?')">🔥 Minor Burn</button>
-                            <button onclick="setChatInput('What should I do if I have a persistent headache?')">🤕 Headache</button>
+                <div class="quick-access-grid">
+                    <h3>Quick Access Guidelines</h3>
+                    <div class="quick-cards">
+                        <div class="quick-card" onclick="searchGuideline('CPR')">
+                            <span>❤️</span>
+                            <h4>CPR</h4>
+                            <p>Cardiopulmonary Resuscitation</p>
                         </div>
-                        <div class="chat-input-area">
-                            <div class="input-wrapper">
-                                <textarea id="chatInput" placeholder="Describe your symptoms or ask a medical question..." rows="1" oninput="autoResize(this)"></textarea>
-                                <div class="input-actions">
-                                    <button class="btn-attachment">📎</button>
-                                    <button class="btn-send" onclick="sendMessage()">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                    </button>
+                        <div class="quick-card" onclick="searchGuideline('Choking')">
+                            <span>😮</span>
+                            <h4>Choking</h4>
+                            <p>Heimlich Maneuver</p>
+                        </div>
+                        <div class="quick-card" onclick="searchGuideline('Bleeding')">
+                            <span>🩸</span>
+                            <h4>Bleeding</h4>
+                            <p>Wound Care</p>
+                        </div>
+                        <div class="quick-card" onclick="searchGuideline('Burns')">
+                            <span>🔥</span>
+                            <h4>Burns</h4>
+                            <p>Burn Treatment</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Chat Page -->
+            <div id="chatPage" class="page">
+                <div class="chat-layout">
+                    <aside class="chat-sidebar">
+                        <div class="chat-new">
+                            <button class="btn-new-chat" onclick="resetChat()">
+                                <span>+</span> New Conversation
+                            </button>
+                        </div>
+                        <div class="chat-history">
+                            <span class="history-label">Recent Queries</span>
+                            <div id="chatHistoryList" class="history-list"></div>
+                        </div>
+                        <div class="chat-disclaimer">
+                            <span>⚠️</span>
+                            <p>AI provides guidelines only. Not a substitute for professional medical advice.</p>
+                        </div>
+                    </aside>
+
+                    <div class="chat-main">
+                        <div class="chat-header">
+                            <div class="ai-status">
+                                <div class="status-dot"></div>
+                                <span>ClinixAI v2.0 - Guideline Assistant</span>
+                            </div>
+                            <button class="chat-action-btn" title="Clear Chat" onclick="resetChat()">🗑️</button>
+                        </div>
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message ai">
+                                <div class="message-avatar">✨</div>
+                                <div class="message-content">
+                                    <p>Welcome! I can help you with:</p>
+                                    <p>• First aid guidelines for various conditions</p>
+                                    <p>• Emergency protocol steps</p>
+                                    <p>• Mental health information</p>
+                                    <p>• Nutrition and lifestyle advice</p>
+                                    <p>What would you like to know about?</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-bottom">
+                            <div class="quick-suggestions" id="quickSuggestions">
+                                <button onclick="setChatInput('How to treat a fever?')">🤒 Fever</button>
+                                <button onclick="setChatInput('First aid for cuts')">🩹 Cuts</button>
+                                <button onclick="setChatInput('Sprain treatment')">🦶 Sprain</button>
+                            </div>
+                            <div class="chat-input-area">
+                                <div class="input-wrapper">
+                                    <textarea id="chatInput" placeholder="Ask for a medical guideline..." rows="1" oninput="autoResize(this)"></textarea>
+                                    <div class="input-actions">
+                                        <button class="btn-send" onclick="sendMessage()">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ==================== HEALTH TRACKER PAGE ==================== -->
-        <div id="vitalsPage" class="page">
-            <div class="page-header">
-                <h2>📊 Health Tracker</h2>
-                <p>Track your vitals and monitor your health progress over time</p>
+            <!-- Emergency Page -->
+            <div id="emergencyPage" class="page">
+                <div class="emergency-header">
+                    <h2>🚨 Emergency Protocols</h2>
+                    <button class="btn-emergency-large" onclick="callEmergency()">
+                        <span>📞</span> CALL EMERGENCY
+                    </button>
+                </div>
+                <div class="emergency-protocols" id="emergencyProtocols"></div>
             </div>
 
-            <div class="vitals-grid">
-                <div class="card vital-input-card">
-                    <h3>Log New Vital</h3>
-                    <form id="vitalForm" onsubmit="saveVital(event)">
-                        <div class="form-group">
-                            <label>Vital Type</label>
-                            <select id="vitalType" required>
-                                <option value="heart_rate">Heart Rate (bpm)</option>
-                                <option value="blood_pressure">Blood Pressure (mmHg)</option>
-                                <option value="glucose">Blood Glucose (mg/dL)</option>
-                                <option value="weight">Body Weight (kg)</option>
-                            </select>
+            <!-- Symptoms Page -->
+            <div id="symptomsPage" class="page">
+                <div class="page-header">
+                    <h2>🩺 Symptom Checker</h2>
+                    <p>Select your symptoms for guidance</p>
+                </div>
+                <div class="symptom-checker-layout">
+                    <div class="symptom-panel">
+                        <h3>Select Symptoms</h3>
+                        <div class="symptom-tags" id="selectedSymptomTags"></div>
+                        <div class="symptom-grid">
+                            <button class="symptom-btn" onclick="toggleSymptom('fever')">Fever</button>
+                            <button class="symptom-btn" onclick="toggleSymptom('headache')">Headache</button>
+                            <button class="symptom-btn" onclick="toggleSymptom('chest pain')">Chest Pain</button>
+                            <button class="symptom-btn" onclick="toggleSymptom('difficulty breathing')">Breathing Difficulty</button>
+                            <button class="symptom-btn" onclick="toggleSymptom('bleeding')">Bleeding</button>
+                            <button class="symptom-btn" onclick="toggleSymptom('cough')">Cough</button>
                         </div>
-                        <div class="form-group">
-                            <label>Value</label>
-                            <input type="text" id="vitalValue" placeholder="e.g. 72 or 120/80" required>
-                        </div>
-                        <button type="submit" class="btn-primary" style="width: 100%">Save Vital</button>
-                    </form>
-                </div>
-
-                <div class="card vitals-history-card">
-                    <h3>Recent History</h3>
-                    <div id="vitalsHistory" class="vitals-history-list">
-                        <p style="color: var(--text-muted); text-align: center;">No records found. Log your first vital!</p>
+                        <button class="btn-primary" onclick="checkSymptoms()">Check Symptoms</button>
+                    </div>
+                    <div class="triage-panel" id="triagePanel" style="display: none;">
+                        <h3>Results</h3>
+                        <div class="triage-alert" id="triageAlert"></div>
+                        <div class="condition-results" id="conditionResults"></div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ==================== EMERGENCY PAGE ==================== -->
-        <div id="emergencyPage" class="page">
-            <div class="emergency-header">
-                <h2>&#128682; Emergency Protocols</h2>
-                <button class="btn-emergency-large" onclick="callEmergency()">
-                    <span>&#128222;</span> CALL EMERGENCY SERVICES
-                </button>
-            </div>
-
-            <div class="emergency-protocols" id="emergencyProtocols">
-                <!-- Populated dynamically -->
-            </div>
-
-            <div class="nearby-hospitals" style="margin-top: 2rem;">
-                <h3>&#127973; Find Nearby Medical Facilities</h3>
-                <div class="location-banner">
-                    <span class="loc-icon">&#128205;</span>
-                    <span id="locationText">Detecting location...</span>
+            <!-- Drug Database Page -->
+            <div id="drugsPage" class="page">
+                <div class="page-header">
+                    <h2>💊 Drug Database</h2>
+                    <p>Search FDA drug information</p>
                 </div>
-                <div class="facility-buttons">
-                    <a id="hospitalLink" class="facility-btn hospital" href="#" target="_blank">
-                        <span>&#127973;</span> Hospitals
-                    </a>
-                    <a id="pharmacyLink" class="facility-btn pharmacy" href="#" target="_blank">
-                        <span>&#128138;</span> Pharmacies
-                    </a>
-                    <a id="clinicLink" class="facility-btn clinic" href="#" target="_blank">
-                        <span>&#128137;</span> Clinics
-                    </a>
+                <div class="search-bar-full">
+                    <input type="text" id="drugSearchInput" class="search-input" placeholder="Search drug name...">
+                    <button class="btn-primary" onclick="searchDrug()" style="width: auto; padding: 0 1.5rem;">Search</button>
                 </div>
-                <iframe id="mapFrame"
-                    style="width: 100%; height: 300px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); margin-top: 1rem; display: none;"></iframe>
-            </div>
-        </div>
-
-        <!-- ==================== ENCYCLOPEDIA PAGE ==================== -->
-        <div id="encyclopediaPage" class="page">
-            <div class="page-header">
-                <h2>&#127760; Wikipedia Medical Search</h2>
-                <p>Get reliable medical information directly from Wikipedia</p>
+                <div class="drug-results" id="drugResults" style="display: none;"></div>
             </div>
 
-            <div class="encyclopedia-controls">
-                <div class="search-bar-full" style="display: flex; gap: 0.5rem;">
-                    <div style="position: relative; flex: 1;">
-                        <span class="search-icon">&#128269;</span>
-                        <input type="text" id="encyclopediaSearch" class="search-input" placeholder="Search medical conditions on Wikipedia...">
+            <!-- Wikipedia Page -->
+            <div id="encyclopediaPage" class="page">
+                <div class="page-header">
+                    <h2>🌐 Wikipedia Medical Search</h2>
+                    <p>Search medical topics on Wikipedia</p>
+                </div>
+                <div class="search-bar-full">
+                    <input type="text" id="encyclopediaSearch" class="search-input" placeholder="Search Wikipedia...">
+                    <button class="btn-primary" onclick="searchWikipedia()" style="width: auto; padding: 0 1.5rem;">Search</button>
+                </div>
+                <div class="encyclopedia-list" id="encyclopediaList"></div>
+            </div>
+        </main>
+
+        <!-- Modals -->
+        <div class="overlay" id="detailOverlay" onclick="if(event.target === this) closeDetailModal()">
+            <div class="detail-modal">
+                <div class="modal-hero" id="modalHero">
+                    <button class="modal-close" onclick="closeDetailModal()">×</button>
+                    <div class="modal-hero-badges">
+                        <span class="modal-hero-badge" id="modalCategory"></span>
+                        <span class="modal-hero-badge" id="modalSeverity"></span>
                     </div>
-                    <button class="btn-primary" onclick="searchWikipedia()" style="width: auto; margin-top: 0; padding: 0 1.5rem;">Search</button>
+                    <h2 id="modalTitle"></h2>
                 </div>
-                <div class="letter-bar" id="letterBar" style="margin-top: 1.5rem;">
-                    <!-- Populated dynamically -->
-                </div>
-            </div>
-
-            <div class="encyclopedia-list" id="encyclopediaList">
-                <div class="empty-state">
-                    <div class="empty-icon">&#127760;</div>
-                    <h3>Search Wikipedia</h3>
-                    <p>Enter a condition or disease to get information from Wikipedia</p>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- ==================== MODALS ==================== -->
-    <!-- Detail Modal -->
-    <div class="overlay" id="detailOverlay" onclick="if(event.target === this) closeDetailModal()">
-        <div class="detail-modal">
-            <div class="modal-hero" id="modalHero">
-                <button class="modal-close" onclick="closeDetailModal()">&#10005;</button>
-                <div class="modal-hero-badges">
-                    <span class="modal-hero-badge" id="modalCategory"></span>
-                    <span class="modal-hero-badge" id="modalSeverity"></span>
-                </div>
-                <h2 id="modalTitle"></h2>
-            </div>
-            <div class="modal-body">
-                <div class="modal-section">
-                    <div class="modal-section-title"><span>&#128221;</span> First Aid Steps</div>
-                    <div class="steps-list" id="modalSteps"></div>
-                </div>
-                <div class="modal-section">
-                    <div class="modal-section-title"><span>&#128196;</span> Summary</div>
-                    <p class="modal-summary-text" id="modalSummary"></p>
-                </div>
-                <div class="modal-section" id="medicinesSection">
-                    <div class="modal-section-title"><span>&#128138;</span> Recommended Medicines</div>
-                    <div class="medicines-grid" id="modalMedicines"></div>
-                </div>
-                <div class="modal-section" id="emergencySection" style="display: none;">
-                    <div class="emergency-alert">
-                        <span style="font-size: 1.5rem;">&#9888;</span>
-                        <div><strong>Emergency Condition:</strong> Seek immediate medical attention. Call emergency
-                            services or visit the nearest hospital.</div>
+                <div class="modal-body">
+                    <div class="modal-section">
+                        <h4>Steps</h4>
+                        <div class="steps-list" id="modalSteps"></div>
                     </div>
-                </div>
-                <div class="modal-section">
-                    <p class="disclaimer-text">For educational purposes only. Not medical advice. Consult a licensed
-                        healthcare provider.</p>
+                    <div class="modal-section">
+                        <h4>Summary</h4>
+                        <p id="modalSummary"></p>
+                    </div>
+                    <div class="modal-section" id="medicinesSection">
+                        <h4>Medicines</h4>
+                        <div id="modalMedicines"></div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Add Modal -->
-    <div class="overlay" id="addOverlay" onclick="if(event.target === this) closeAddModal()">
-        <div class="add-modal">
-            <div class="add-header">
-                <h2>&#43; Add New Guideline</h2>
-                <button class="modal-close" onclick="closeAddModal()">&#10005;</button>
-            </div>
-            <div class="add-body">
-                <form id="addForm" onsubmit="submitNewGuideline(event)">
-                    <div class="form-group">
-                        <label>Condition Title *</label>
-                        <input type="text" id="addTitle" class="form-control" placeholder="e.g., Fever, Burns..."
-                            required>
-                    </div>
-                    <div class="form-group">
-                        <label>First Aid Steps *</label>
-                        <textarea id="addSummary" class="form-control"
-                            placeholder="1) Wash area... 2) Apply pressure... 3) Cover..." required></textarea>
-                        <div class="form-hint">Number your steps for best results (1, 2, 3...)</div>
-                    </div>
-                    <div class="form-group">
-                        <label>Category *</label>
-                        <select id="addCategory" class="form-control" required>
-                            <option value="">Select...</option>
-                            {% for cat in categories %}
-                            <option value="{{ cat }}">{{ cat }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="auto-enrich-info"><span>&#10024;</span> Medicines and severity assigned automatically
-                    </div>
-                    <button type="submit" class="btn-primary" id="submitBtn">Add Guideline</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Modal -->
-    <div class="overlay" id="editOverlay" onclick="if(event.target === this) closeEditModal()">
-        <div class="add-modal">
-            <div class="add-header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                <h2>&#9998; Edit Guideline</h2>
-                <button class="modal-close" onclick="closeEditModal()">&#10005;</button>
-            </div>
-            <div class="add-body">
-                <form id="editForm" onsubmit="submitEditGuideline(event)">
-                    <input type="hidden" id="editId">
-                    <div class="form-group">
-                        <label>Condition Title *</label>
-                        <input type="text" id="editTitle" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>First Aid Steps *</label>
-                        <textarea id="editSummary" class="form-control" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Category *</label>
-                        <select id="editCategory" class="form-control" required>
-                            {% for cat in categories %}
-                            <option value="{{ cat }}">{{ cat }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Severity</label>
-                        <select id="editSeverity" class="form-control">
-                            <option value="mild">Mild</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="urgent">Urgent</option>
-                            <option value="critical">Critical</option>
-                        </select>
-                    </div>
-                    <div class="btn-group">
-                        <button type="submit" class="btn-primary" id="editSubmitBtn">Save Changes</button>
-                        <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Emergency Protocol Timer Modal -->
-    <div class="overlay" id="protocolTimerOverlay" onclick="if(event.target === this) closeProtocolTimer()">
-        <div class="protocol-timer-modal">
-            <div class="timer-header">
-                <h2 id="protocolTimerTitle">CPR Protocol</h2>
-                <button class="modal-close" onclick="closeProtocolTimer()">&#10005;</button>
-            </div>
-            <div class="timer-body">
-                <div class="timer-display" id="timerDisplay">00:00</div>
-                <div class="timer-controls">
-                    <button class="btn-primary" onclick="startTimer()">Start</button>
-                    <button class="btn-secondary" onclick="pauseTimer()">Pause</button>
-                    <button class="btn-secondary" onclick="resetTimer()">Reset</button>
-                </div>
-                <div class="protocol-steps" id="protocolSteps"></div>
-                <button class="btn-audio" onclick="toggleAudio()">
-                    <span id="audioIcon">&#128264;</span> Audio Guide
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-content">
-            <div class="footer-top">
-                <div class="footer-brand">
-                    <div class="logo">
-                        <div class="logo-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M12 4V20M4 12H20M7 7L17 17M17 7L7 17" stroke="white" stroke-width="3" stroke-linecap="round" />
-                            </svg>
-                        </div>
-                        <h3>ClinixAI</h3>
-                    </div>
-                    <p>Advanced AI-powered medical platform for healthcare professionals and patients.</p>
-                </div>
-                <div class="footer-links">
-                    <div class="footer-link-group">
-                        <span>Platform</span>
-                        <a href="#" onclick="navigateTo('home')">Home</a>
-                        <a href="#" onclick="navigateTo('symptoms')">Symptoms</a>
-                        <a href="#" onclick="navigateTo('drugs')">Drug Database</a>
-                    </div>
-                    <div class="footer-link-group">
-                        <span>Resources</span>
-                        <a href="#" onclick="navigateTo('emergency')">Emergency</a>
-                        <a href="#" onclick="navigateTo('encyclopedia')">Wikipedia</a>
-                        <a href="#" onclick="navigateTo('chat')">AI Chat</a>
-                    </div>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <div class="footer-disclaimer">
-                    <strong>Medical Disclaimer:</strong> For educational purposes only. Not medical advice. Always consult a licensed healthcare provider for medical concerns.
-                </div>
-                <div class="footer-info">
-                    <p>&copy; 2026 ClinixAI. All rights reserved.</p>
-                    <div class="footer-meta">
-                        <span>v1.1.0</span>
-                        <span class="separator">|</span>
-                        <span>Secure Connection</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </footer>
-
-    <script src="/static/app.js"></script>
+    <script type="module" src="/static/app.js"></script>
 </body>
-
 </html>
